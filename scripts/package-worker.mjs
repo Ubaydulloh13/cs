@@ -8,6 +8,7 @@ const mime={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=u
 async function walk(dir){for(const item of await readdir(dir,{withFileTypes:true})){if(item.name.startsWith('.')||item.name==='server')continue;const path=resolve(dir,item.name);if(item.isDirectory())await walk(path);else{const url='/'+relative(root,path).replaceAll('\\','/');assets[url]={type:mime[extname(path)]||'application/octet-stream',data:(await readFile(path)).toString('base64')}}}}
 await walk(root)
 if(!assets['/index.html'])throw new Error('Missing built index.html')
+const siteOrigin=new URL(Buffer.from(assets['/index.html'].data,'base64').toString('utf8').match(/property="og:url" content="([^"]+)"/)[1]).origin
 await mkdir(resolve(root,'server'),{recursive:true})
 const worker=`const assets=${JSON.stringify(assets)};
 export default { async fetch(request) {
@@ -18,6 +19,7 @@ export default { async fetch(request) {
  const headers={'Content-Type':item.type,'X-Content-Type-Options':'nosniff','Cache-Control':path.startsWith('/assets/')?'public, max-age=31536000, immutable':path.endsWith('.png')?'public, max-age=86400':'no-cache'};
  if(request.method==='HEAD') return new Response(null,{headers});
  const raw=atob(item.data);const bytes=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);
+ if(item.type.startsWith('text/html'))return new Response(new TextDecoder().decode(bytes).replaceAll(${JSON.stringify(siteOrigin)},new URL(request.url).origin),{headers});
  return new Response(bytes,{headers});
 }};
 `
