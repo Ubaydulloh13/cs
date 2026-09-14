@@ -1,2 +1,86 @@
-@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700;800;900&family=Barlow:wght@400;500;600;700;800&display=swap');
-:root{font-family:'Barlow',Arial,sans-serif;color:#efefea;background:#101211;font-synthesis:none;text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased;font-weight:400}*{box-sizing:border-box}body{margin:0;min-width:360px}button,input,select{font:inherit}button,a,input,select{-webkit-tap-highlight-color:transparent}button{cursor:pointer;color:inherit;background:none;border:0;transition:background .18s,color .18s,border-color .18s,transform .18s}button:disabled{cursor:not-allowed;opacity:.5}button,a{touch-action:manipulation}button:focus-visible,a:focus-visible{outline:2px solid #d5f77c;outline-offset:5px}button:active{transform:translateY(1px)}a{color:inherit;text-decoration:none}button svg{flex-shrink:0}::selection{background:#c6ed7a;color:#111}input,select{color:#eee;background:#1d201d;border:1px solid #393d34;padding:12px;border-radius:3px;width:100%;outline:none}input:focus,select:focus{border-color:#c6ed7a}label{font-size:10px;letter-spacing:1.5px;color:#999d92;font-weight:600}
+@import url("https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700;800;900&family=Barlow:wght@400;500;600;700;800&display=swap");
+:root {
+  font-family: "Barlow", Arial, sans-serif;
+  color: #efefea;
+  background: #101211;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  font-weight: 400;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  min-width: 360px;
+}
+button,
+input,
+select {
+  font: inherit;
+}
+button,
+a,
+input,
+select {
+  -webkit-tap-highlight-color: transparent;
+}
+button {
+  cursor: pointer;
+  color: inherit;
+  background: none;
+  border: 0;
+  transition:
+    background 0.18s,
+    color 0.18s,
+    border-color 0.18s,
+    transform 0.18s;
+}
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+button,
+a {
+  touch-action: manipulation;
+}
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid #d5f77c;
+  outline-offset: 5px;
+}
+button:active {
+  transform: translateY(1px);
+}
+a {
+  color: inherit;
+  text-decoration: none;
+}
+button svg {
+  flex-shrink: 0;
+}
+::selection {
+  background: #c6ed7a;
+  color: #111;
+}
+input,
+select {
+  color: #eee;
+  background: #1d201d;
+  border: 1px solid #393d34;
+  padding: 12px;
+  border-radius: 3px;
+  width: 100%;
+  outline: none;
+}
+input:focus,
+select:focus {
+  border-color: #c6ed7a;
+}
+label {
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  color: #999d92;
+  font-weight: 600;
+}

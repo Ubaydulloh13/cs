@@ -17,3 +17,9 @@ File: `public/og.png`
 Prompt:
 
 Create one complete landscape social share card 1536x1024 for STRIKEZONE, an actual dark charcoal and lime-green tactical browser shooter game. Premium realistic 3D military game promotional artwork. Right half: olive-uniform elite tactical operator wearing black vest helmet goggles and balaclava, holding black assault rifle, abandoned industrial yard and atmospheric dust behind. Left half charcoal dark, large perfectly legible bold condensed white typography exactly 'STRIKEZONE' on top, and below 'HAR BIR O‘Q.' and in lime green 'YANGI IMKONIYAT.' Small bottom text exactly '1v1 — 6v6  /  ONLINE + BOTS'. Restrained lime #c8ed7a, charcoal #101211, olive gray. Clean editorial hierarchy, subtle tactical grid background, professional complete cohesive design, no other text, no watermark, no blood.
+# Evolution 3D assets
+
+- `public/models/soldier.glb`: Three.js example Soldier, credited to Mixamo in the [official example](https://threejs.org/examples/webgl_animation_skinning_blending.html). Downloaded from `https://threejs.org/examples/models/gltf/Soldier.glb`. Mixamo permits characters and animations in games under its [royalty-free use FAQ](https://helpx.adobe.com/creative-cloud/faq/mixamo-faq.html). Outfit variants tint this shared rigged model.
+- `public/textures/concrete-*.jpg`: Poly Haven `concrete_floor_worn_001`, 1K diffuse, OpenGL normal, and roughness textures.
+- `public/textures/brick-*.jpg`: Poly Haven `brick_wall_001`, 1K diffuse and OpenGL normal textures. Both sets are [CC0](https://polyhaven.com/license). Exact URLs are in `scripts/fetch-game-assets.mjs`.
+- Weapons, curved blades, attachments and skin patterns are original procedural Three.js geometry/canvas textures in `src/game/models.js`. User references guide the concepts; copied CS2 or PUBG assets are not shipped.

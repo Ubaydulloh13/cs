@@ -1,45 +1,51 @@
-# STRIKEZONE — First Strike
+# STRIKEZONE — Evolution
 
-O‘zbekcha brauzer 3D FPS o‘yini. React, Three.js va PeerJS bilan yaratilgan o‘ynaladigan boshlang‘ich versiya.
+O‘zbekcha brauzer FPS: React, Three.js, PeerJS va serverda saqlanadigan accountlar.
 
 ## Ishga tushirish
 
-Node.js 22.13+ kerak.
+Node.js 22.13 yoki yangirog‘i kerak.
 
 ```sh
 npm install
+npm run admin:setup
 npm run dev -- --host 0.0.0.0
 ```
 
-Terminaldagi manzilni oching (odatda http://localhost:5173). **Jangni boshlash → Arena’ga kirish → Jangga kirish** ni bosing. Brauzer sichqonchani ushlab turishga ruxsat so‘rashi mumkin.
+Terminal ko‘rsatgan manzilni oching. Oddiy o‘yinchilar **Account ochish** orqali ro‘yxatdan o‘tadi. Egasi uchun login **operator**; tasodifiy parol `.private/admin-login.txt` faylida. Uni Shop → Account orqali o‘zgartirish mumkin. `admin:setup` mavjud parolni almashtirmaydi. `.private` va `.data` Git va hosting arxiviga kirmaydi.
 
-## Imkoniyatlar
+## O‘yin
 
-- 1v1, 2v2, 3v3, 4v4, 5v5, 6v6; Alpha va Bravo jamoalari.
-- Dust Yard va Iron Depot arenalari, to‘siqlar, konteynerlar, yorug‘lik va soyalar.
-- WASD yurish; sichqoncha bilan qarash; chap tugma otish; o‘ng tugma ADS; Shift yugurish; Space sakrash; C/Ctrl o‘tirish; R o‘qlash; 1–4 qurol; Tab hisob; Esc menyu.
-- Telefonda ekrandagi harakat va otish tugmalari, o‘ng hududni surish orqali qarash.
-- AK-47, M4A1, MP5 va AWP: alohida zarar, aniqlik, o‘qdon, otish va o‘qlash tezligi.
-- Devorga tegadigan o‘qlar, boshga zarba, ittifoqchilarga zarar yetkazmaslik, 3 soniyalik respawn, 2 soniyalik himoya.
-- Uch qiyinlikdagi botlar: to‘siqlar orasidan yo‘l topish, raqibga qarash, otish, strafe, o‘qlash.
-- Factory, Desert Camo, Arctic Ice, Toxic Pulse, Crimson Web va Gold Rush skinlari. Arsenalda 3D qurolni aylantirish va skinni tanlash mumkin.
-- Har bir yengilgan raqib +25 tanga, yakunlangan jang +30, g‘alaba +150. Tangalar, skinlar, sozlamalar va so‘nggi 20 jang shu brauzerning localStorage xotirasida saqlanadi. Haqiqiy pul va umumiy akkaunt tizimi yo‘q.
+- 1v1–6v6. Bo‘sh joylarni uch qiyinlikdagi botlar to‘ldiradi.
+- 6 arena: Dust Yard, Iron Depot, Old Quarter, Port Meridian, Red Canyon, Blacksite. Har birida alohida to‘siqlar va bot yo‘llari mavjud.
+- 20 asosiy qurol, jumladan SCAR-L, SCAR-H, AK-47, M4A1, AWP, HK416, AUG va Vector. Asosiy qurol jangdan oldin Arsenalda tanlanadi.
+- `1` — tanlangan asosiy qurol; `2` — P226; `3` — pichoq. Magazinlar almashtirishda saqlanadi.
+- WASD yurish, Shift yugurish, Space sakrash, C/Ctrl o‘tirish, R o‘qlash, Tab natijalar, Esc pauza. Mobil ekran boshqaruvlari ham mavjud.
+- Chap tugmani ushlab uzluksiz otish. O‘ng tugma ADS. O‘q kamera markazidagi ray bo‘ylab ketadi; qurol animatsiyasi kamerani siljitmaydi. Devorlar, masofa, ittifoqchi va spawn himoyasi hisobga olinadi.
+- Red Dot, holografik, ACOG va 6× optika; Sozlamalarda nuqta/xoch/aylana/T pritsel va 4 rang.
+- Mixamo animatsiyali inson modeli, 7 rangli kiyim to‘plami, haqiqiy material teksturalari, PBR yoritish va soyalar. Qurollar yumaloq detallar, silindrlar, egri magazin va optika bilan yaratilgan. Bu CS2 darajasidagi fotorealistik grafika emas; kiyim to‘plamlari bitta rigged modelga asoslangan.
+- 16 qurol/pichoq skini. Glacier, Dragon, Inferno va Cyber kabi skinlar geometriyani ham o‘zgartiradi va o‘ng tarafda maxsus elimination banner beradi.
+- Combat, Karambit, Butterfly, M9 Bayonet, Kukri va Talon pichoqlari. Pichoq zarbasi 2.5 metr bilan chegaralangan.
 
-## Do‘stlar bilan onlayn
+## Account va do‘kon
 
-1. Hamma bir xil o‘yin saytini ochadi. Tashqi do‘stlar uchun saytga kirish ruxsati yoki ochiq HTTPS hosting kerak.
-2. Xona egasi **Do‘stlar → Xona ochish** ni bosadi.
-3. 6 belgili kod yoki taklif havolasini ulashadi.
-4. Qolganlar **Xonaga kirish** orqali qo‘shiladi. Jamoalar navbat bilan to‘ldiriladi.
-5. Xona egasi **Jangni boshlash** ni bosadi. Bo‘sh o‘rinlar botlar bilan to‘ldiriladi.
+Mahalliy server SQLite ishlatadi (`.data/accounts.sqlite`); Sites serveri `DB` D1 binding ishlatadi. Parollar tuzli PBKDF2-SHA256 bilan hashlanadi; sessiyalar HttpOnly cookie bilan boshqariladi. Account, balans, xaridlar, jihozlar, sozlamalar va so‘nggi 30 jang serverda saqlanadi. Avvalgi localStorage profili avtomatik ko‘chirilmaydi.
 
-Xona egasining brauzeri 60 Hz jang simulyatsiyasini boshqaradi. Klientlar 20 Hz input yuboradi, host 20 Hz holat yuboradi. Host zarar, ammo, harakat va hisobni tekshiradi. Xona egasi oyna yoki aloqani yopsa, jang yakunlanadi. Boshqa qatnashchi chiqsa, o‘rnini bot egallaydi. Jang boshlangach yangi qatnashchilar kiritilmaydi.
+Coin bilan qurol, kiyim, skin va pichoq xarid qilish ishlaydi. Narx, balans, egalik va admin huquqi serverda tekshiriladi. `operator`, `aperator`, `admin` loginlari ro‘yxatdan o‘tish uchun band. Operator Shop → Operator paneli orqali bir amalda 1 dan 1 milliardgacha coin qo‘sha oladi; amallar auditga yoziladi.
 
-[PeerJS](https://peerjs.com/client/getting-started) ommaviy signaling xizmati orqali brauzerlarni topadi; o‘yin ma’lumotlari WebRTC orqali uzatiladi. Ayrim NAT/firewall tarmoqlarida TURN relay serveri talab qilinadi. Ushbu versiyada maxsus TURN va doimiy ajratilgan server sozlanmagan. Shuning uchun har qanday ikki internet tarmog‘i orasidagi ulanish kafolatlanmaydi. Internetda musobaqa uchun serverdagi akkaunt, anti-cheat, doimiy ma’lumotlar bazasi, TURN va host almashish alohida ishlab chiqilishi kerak.
+Haqiqiy pulga coin, qurol olish va donat **hali ulanmagan**. Shopdagi so‘m narxlari rejalashtirilgan narxlar; tugmalar o‘chiq, `/api/checkout` 503 qaytaradi va pul yechilmaydi. Click/Payme/Stripe savdogar hisobi, tasdiqlangan narxlar va server webhook integratsiyasi kerak.
 
-Bot rejimi signaling serveriga murojaat qilmaydi. Sayt bir marta yuklanganidan keyin shu sessiyadagi bot jangi internetni talab qilmaydi; bu PWA/offline qayta ochish kafolati emas.
+Jang mukofoti: yakunlangan jang +30, har bir kill +25, g‘alaba +150. Natijaga muddatli, bir marta ishlatiladigan server ticket kerak. Ammo jang simulyatsiyasi host brauzerida ishlaydi, natijalar host/klientdan keladi. Bu mustaqil anti-cheat va pul bilan bog‘langan himoyalangan iqtisodiyot o‘rnini bosmaydi.
 
-## Tekshirish va yig‘ish
+## Do‘stlar bilan
+
+Hamma bir xil HTTPS saytga kirib accountini ochadi. Xona egasi **Do‘stlar → Xona ochish** orqali olti belgili kod oladi. Boshqalar kod yoki taklif havolasi bilan qo‘shiladi; egasi jangni boshlaydi.
+
+Host simulyatsiyasi 60 Hz, tarmoq paketlari 20 Hz. Obyektlarni birlashtirish, sonlarni ixchamlashtirish, paket navbatini cheklash, interpolatsiya va dinamik render o‘lchami yukni kamaytiradi. Barcha qurilma/tarmoqlarda qotmaslik kafolati emas.
+
+Host oynani yopsa jang tugaydi. Oddiy ishtirokchi chiqsa bot uning o‘rnini egallaydi. Jang boshlangach yangi odam qo‘shilmaydi. PeerJS ommaviy signaling xizmati ishlatiladi; maxsus TURN relay sozlanmagan. Ayrim NAT/firewall tarmoqlarida ulanish ishlamasligi mumkin. Tashqi o‘yin uchun HTTPS hostingdan foydalaning. Hosting owner-private bo‘lsa, do‘stlarga kirish berish yoki saytni ochiq qilish talab etiladi.
+
+## Tekshirish va hosting
 
 ```sh
 npm test
@@ -47,12 +53,10 @@ npm run lint
 npm run build
 ```
 
-Testlar jamoa o‘lchamlari, spawn, devorlar, sakrash, zarar, o‘qlash, himoya, hisob va vaqt tugashi, botlarning ikkala arenada jang qilishi hamda xona protokolini tekshiradi. Xona testlarida xotiradagi soxta transport ishlatiladi; bu haqiqiy ikkita qurilmadagi WebRTC sinovi emas. Joriy ishlab chiqish sessiyasida boshqariladigan brauzer mavjud bo‘lmagani sababli grafik ko‘rinish va haqiqiy ikki qurilma aloqasi avtomatik tekshirilmagan.
+22 test jang, harakat, barcha arenalar, 20 qurolning kamera markaziga mosligi, sniper, pichoq, geometriya, xona protokoli, account, xarid va admin huquqlarini tekshiradi. Transport testlari xotiradagi soxta PeerJS bilan bajariladi. Haqiqiy ikki qurilma, brauzerdagi vizual ko‘rinish va FPS hali o‘lchanmagan.
 
-Vite `dist/` papkasini yaratadi. Uni HTTPS statik hostingda berish mumkin. `scripts/package-worker.mjs` shu yig‘ilgan fayllarni Sites uchun mustaqil Cloudflare Worker `dist/server/index.js` ichiga joylaydi. `.openai/hosting.json` Sites loyihasini belgilaydi. Private Sites manzili faqat egasiga ochiq; do‘stlarga kirish berish uchun hostingdagi ulashish sozlamasini o‘zgartirish kerak.
+Build klient va account API bilan `dist/server/index.js` Worker yaratadi. `.openai/hosting.json` loyiha va `DB` bindingni saqlaydi. Ishlab chiqarishda `ADMIN_PASSWORD_HASH` Sites runtime **secret** sifatida sozlanadi; xom parol joylashtirilmaydi. Oddiy statik hosting va `vite preview` account API ishlatmaydi.
 
-3D uchun [Three.js WebGLRenderer](https://threejs.org/docs/pages/WebGLRenderer.html) ishlatiladi va WebGL 2 talab qilinadi. Kuchsiz qurilmalar uchun Sozlamalarda grafikani **Yengil** qiling.
+Schema `db/schema.ts`, migratsiyalar `drizzle/`. `npm run db:generate` yangi migratsiya chiqaradi; build ularni Workerga va `dist/.openai/drizzle` ichiga qo‘shadi.
 
-Asosiy manbalar: `src/game/simulation.js` — o‘yin qoidalari, `renderer.js` — 3D, `network.js` — xonalar, `Game.jsx` — boshqaruv va HUD, `config.js` — xarita/qurol/skinlar, `App.jsx` — menyu va profil.
-
-Original menyu tasviri va ijtimoiy havola rasmi: [ASSETS.md](ASSETS.md).
+Asset manbalari: [ASSETS.md](ASSETS.md). Yangilangan topshiriq: [TALABLAR.md](TALABLAR.md).

@@ -1,0 +1,899 @@
+.account-loading {
+  min-height: 100vh;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 15px;
+  background: #101613;
+  color: #c7ed83;
+}
+.account-error {
+  position: fixed;
+  bottom: 25px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 150;
+  padding: 12px 20px;
+  background: #502c2c;
+  border: 1px solid #a06565;
+  border-radius: 5px;
+  max-width: 90vw;
+}
+.auth-screen {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1.25fr 1fr;
+  background: #101612;
+}
+.auth-art {
+  padding: 45px 8%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 760px;
+  background:
+    linear-gradient(90deg, #101711e8, #10171111),
+    linear-gradient(0deg, #101711, transparent 70%),
+    url("/images/operator.png") 63% center/cover;
+}
+.auth-art .brand {
+  font-size: 24px;
+}
+.auth-art h1 {
+  font-family: var(--heading);
+  font-size: clamp(40px, 4.5vw, 74px);
+  font-weight: 600;
+  line-height: 1.02;
+  letter-spacing: -1.5px;
+  margin: 28px 0;
+}
+.auth-art h1 em {
+  color: var(--lime);
+  font-style: normal;
+}
+.auth-art p {
+  color: #c3c9bc;
+  line-height: 1.8;
+}
+.auth-art small {
+  color: #8d998c;
+  font-size: 10px;
+  letter-spacing: 2px;
+}
+.auth-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 26px;
+}
+.auth-tags span {
+  border: 1px solid #88977855;
+  padding: 7px 10px;
+  color: #c3d0b8;
+  font-size: 9px;
+  letter-spacing: 1px;
+}
+.auth-panel {
+  align-self: center;
+  padding: 60px 12%;
+  max-width: 670px;
+  width: 100%;
+  margin: auto;
+}
+.auth-panel > svg {
+  color: var(--lime);
+  margin-bottom: 30px;
+}
+.auth-panel > .eyebrow {
+  display: block;
+}
+.auth-panel h2 {
+  font: 600 38px var(--heading);
+  margin: 14px 0;
+}
+.auth-panel > p {
+  color: #939f91;
+  line-height: 1.7;
+  margin-bottom: 28px;
+}
+.auth-panel label,
+.shop-page label,
+.optic-picker label {
+  display: block;
+  color: #aeb8a7;
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  font-weight: 600;
+  margin: 22px 0 10px;
+}
+.auth-panel input,
+.shop-page input,
+.shop-page select,
+.optic-picker select {
+  background: #1a221b;
+  border: 1px solid #384134;
+  width: 100%;
+  padding: 14px;
+  color: #edf3e6;
+  border-radius: 3px;
+  outline: none;
+}
+.auth-panel input:focus,
+.shop-page input:focus,
+.shop-page select:focus {
+  border-color: var(--lime);
+}
+.password-input {
+  position: relative;
+}
+.password-input input {
+  padding-right: 45px;
+}
+.password-input button {
+  position: absolute;
+  right: 14px;
+  top: 15px;
+  color: #899580;
+  background: none;
+  border: 0;
+}
+.auth-panel form > .primary {
+  margin-top: 26px;
+  min-height: 49px;
+}
+.auth-note {
+  display: flex;
+  gap: 11px;
+  color: #8d9b84;
+  font-size: 11px;
+  line-height: 1.7;
+  margin-top: 27px;
+}
+.auth-note svg {
+  flex-shrink: 0;
+}
+.shop-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid #35402e;
+  margin-bottom: 30px;
+  overflow: auto;
+}
+.shop-tabs button {
+  white-space: nowrap;
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  padding: 16px 21px;
+  color: #899880;
+  font-size: 12px;
+  font-weight: 600;
+}
+.shop-tabs .active {
+  color: var(--lime);
+  border-color: var(--lime);
+}
+.armory-layout {
+  display: grid;
+  grid-template-columns: 235px 1fr;
+  gap: 25px;
+  align-items: start;
+}
+.weapon-list {
+  border: 1px solid #303b2c;
+  background: #151d15;
+  max-height: 850px;
+  overflow: auto;
+  border-radius: 4px;
+}
+.weapon-search {
+  display: flex;
+  align-items: center;
+  padding: 15px;
+  border-bottom: 1px solid #303b2c;
+  color: #99a890;
+  gap: 8px;
+  position: sticky;
+  top: 0;
+  background: #182116;
+  z-index: 1;
+}
+.weapon-search input {
+  min-width: 0;
+  width: 100%;
+  background: transparent;
+  border: 0;
+  outline: none;
+  color: #dce7d2;
+  font-size: 12px;
+}
+.weapon-list > button {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 15px;
+  border: 0;
+  border-left: 3px solid transparent;
+  border-bottom: 1px solid #ffffff06;
+  background: none;
+  text-align: left;
+  color: #a2af99;
+}
+.weapon-list > button > span {
+  font: 13px monospace;
+  opacity: 0.5;
+}
+.weapon-list > button div {
+  flex: 1;
+}
+.weapon-list small {
+  display: block;
+  font-size: 8px;
+  letter-spacing: 1.5px;
+  margin-top: 5px;
+}
+.weapon-list .selected {
+  background: #abc87612;
+  border-left-color: var(--lime);
+  color: #dcf5b9;
+}
+.armory-main {
+  min-width: 0;
+}
+.weapon-stage,
+.character-stage {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse at 50% 45%, #46544455, transparent 70%),
+    linear-gradient(140deg, #202a22, #121b18);
+  border: 1px solid #3a4535;
+  border-radius: 5px;
+}
+.stage-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 15px;
+  padding: 24px 28px;
+  color: var(--skin, #bada9c);
+}
+.stage-heading h2 {
+  font: 600 27px var(--heading);
+  color: #e2e8dd;
+  margin: 8px 0 0;
+}
+.stage-heading h2 em {
+  color: var(--skin, #a6b79a);
+  font-size: 19px;
+  font-style: normal;
+  margin-left: 10px;
+}
+.stage-heading .eyebrow {
+  font-size: 9px;
+  color: var(--skin, #abc28e);
+}
+.weapon-stage .weapon-preview {
+  height: 295px;
+  min-height: 0;
+  margin-top: -20px;
+}
+.weapon-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border-top: 1px solid #47513d66;
+  padding: 19px 28px;
+  gap: 20px;
+}
+.weapon-metrics small {
+  display: block;
+  font-size: 8px;
+  letter-spacing: 1.5px;
+  color: #8e9c86;
+  margin-bottom: 6px;
+}
+.weapon-metrics b {
+  font: 600 23px var(--heading);
+  color: #cedcbe;
+}
+.loadout-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  margin: 16px 0 22px;
+}
+.loadout-bar p {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 11px;
+  color: #95a38a;
+}
+.loadout-bar kbd {
+  background: #293322;
+  border: 1px solid #435133;
+  padding: 4px 6px;
+  color: #c3d6a8;
+}
+.loadout-bar .primary {
+  font-size: 10px;
+  min-height: 43px;
+}
+.section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 24px 0 15px;
+}
+.section-title h3 {
+  font-size: 12px;
+  letter-spacing: 1.5px;
+}
+.section-title span {
+  font-size: 9px;
+  color: #99a78e;
+}
+.skin-swatch-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+.skin-swatch {
+  position: relative;
+  overflow: hidden;
+  padding: 0 0 12px;
+  background: #182016;
+  border: 1px solid #34412d;
+  border-radius: 3px;
+  text-align: left;
+  min-width: 0;
+}
+.skin-swatch.selected {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 20px #ffffff08;
+}
+.skin-swatch b,
+.skin-swatch small,
+.skin-swatch > span {
+  display: block;
+  margin: 0 12px;
+}
+.skin-swatch b {
+  font-size: 12px;
+  color: #e0e7d8;
+}
+.skin-swatch small {
+  font-size: 7px;
+  letter-spacing: 0.7px;
+  color: var(--accent);
+  margin-top: 5px;
+}
+.skin-swatch > span {
+  font-size: 9px;
+  color: #a4b199;
+  margin-top: 10px;
+}
+.skin-sample {
+  height: 65px;
+  position: relative;
+  background:
+    linear-gradient(125deg, var(--skin), #151d1977),
+    repeating-linear-gradient(40deg, var(--accent) 0 3px, transparent 4px 20px);
+  margin-bottom: 11px;
+  overflow: hidden;
+}
+.skin-sample i {
+  position: absolute;
+  width: 80%;
+  height: 8px;
+  background: var(--accent);
+  transform: rotate(-32deg);
+  opacity: 0.4;
+  left: -20%;
+  top: 30px;
+}
+.skin-sample i:nth-child(2) {
+  left: 15%;
+  top: 10px;
+}
+.skin-sample i:nth-child(3) {
+  left: 60%;
+  top: 55px;
+}
+.ice .skin-sample {
+  clip-path: polygon(
+    0 0,
+    100% 0,
+    100% 83%,
+    85% 100%,
+    66% 83%,
+    44% 100%,
+    23% 82%,
+    0 100%
+  );
+}
+.optic-picker {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 14px 18px;
+  border: 1px solid #34412d;
+  border-radius: 3px;
+}
+.optic-picker label {
+  margin: 0;
+  white-space: nowrap;
+}
+.optic-picker select {
+  padding: 10px;
+  width: 220px;
+}
+.optic-picker svg {
+  color: var(--lime);
+}
+.broadcast-preview {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+  flex-wrap: wrap;
+  border: 1px solid #9bcce3;
+  margin-top: 25px;
+  padding: 18px;
+  background: linear-gradient(110deg, #23677e, #13273e 60%, #4b8496);
+  box-shadow: inset 0 0 25px #65cdec44;
+  font-size: 12px;
+}
+.broadcast-preview small {
+  width: 100%;
+  font-size: 8px;
+  letter-spacing: 1.8px;
+  color: #bdefff;
+}
+.broadcast-dragon,
+.broadcast-flame {
+  background: linear-gradient(110deg, #7e3523, #30181a 60%, #b67835);
+  border-color: #dca576;
+}
+.broadcast-cyber {
+  background: linear-gradient(110deg, #533380, #10293e 60%, #498097);
+  border-color: #927dcd;
+}
+.shop-layout {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: 26px;
+  align-items: start;
+}
+.character-stage .primary {
+  border-radius: 0;
+  min-height: 50px;
+}
+.character-preview {
+  position: relative;
+  height: 530px;
+  touch-action: none;
+}
+.character-preview > span {
+  position: absolute;
+  top: 50%;
+  width: 100%;
+  text-align: center;
+  color: #9caf92;
+  font-size: 12px;
+}
+.character-preview > small {
+  position: absolute;
+  bottom: 15px;
+  width: 100%;
+  text-align: center;
+  font-size: 8px;
+  letter-spacing: 2px;
+  color: #94a08b;
+  pointer-events: none;
+}
+.outfit-list {
+  display: grid;
+  gap: 10px;
+}
+.outfit-list > button {
+  display: flex;
+  align-items: center;
+  text-align: left;
+  gap: 20px;
+  padding: 19px;
+  background: linear-gradient(100deg, #252e25, #172016);
+  border: 1px solid #35412e;
+  border-radius: 4px;
+}
+.outfit-list .selected {
+  border-color: var(--accent);
+  background: linear-gradient(100deg, var(--outfit), #172016);
+}
+.outfit-emblem {
+  height: 65px;
+  width: 65px;
+  display: grid;
+  place-items: center;
+  background: var(--outfit);
+  border: 1px solid var(--accent);
+  border-radius: 50%;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+.outfit-list button > div {
+  flex: 1;
+}
+.outfit-list small {
+  font-size: 8px;
+  letter-spacing: 1.5px;
+  color: #a6b69b;
+}
+.outfit-list h3 {
+  font: 600 22px var(--heading);
+  margin: 5px 0;
+  color: #e8ecdf;
+}
+.outfit-list p {
+  font-size: 9px;
+  color: #c6d4b9;
+  margin: 7px 0 0;
+}
+.outfit-list svg {
+  color: var(--accent);
+}
+.knife-shop {
+  max-width: 1000px;
+  margin: auto;
+}
+.knife-shop .weapon-preview {
+  height: 370px;
+}
+.knife-options {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+  margin-top: 17px;
+}
+.knife-options button {
+  padding: 20px 10px;
+  border: 1px solid #36432d;
+  background: #1a2418;
+  border-radius: 3px;
+}
+.knife-options b {
+  font-size: 12px;
+}
+.knife-options small {
+  display: block;
+  margin-top: 9px;
+  color: #9bac8b;
+  font-size: 9px;
+}
+.knife-options .selected {
+  border-color: var(--lime);
+  color: var(--lime);
+}
+.knife-shop select {
+  width: min(350px, 100%);
+  margin-right: 16px;
+  margin-bottom: 16px;
+}
+.payment-intro {
+  display: flex;
+  gap: 24px;
+  padding: 30px 0 35px;
+  align-items: center;
+}
+.payment-intro svg {
+  color: var(--lime);
+}
+.payment-intro h2 {
+  font: 600 30px var(--heading);
+  margin: 0 0 9px;
+}
+.payment-intro p,
+.donation-card p,
+.admin-panel p {
+  color: #97a38d;
+  font-size: 13px;
+  line-height: 1.8;
+}
+.coin-packs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+.coin-packs article {
+  border: 1px solid #465239;
+  background:
+    radial-gradient(ellipse at center, #646b272b, transparent), #1b2419;
+  padding: 27px;
+  border-radius: 4px;
+}
+.coin-packs article > svg {
+  display: block;
+  margin: 38px auto 25px;
+  color: #c5d482;
+}
+.coin-packs h2 {
+  font: 600 39px var(--heading);
+  text-align: center;
+}
+.coin-packs h2 small {
+  font-size: 14px;
+  color: #98a68b;
+}
+.coin-packs p {
+  color: #94a18a;
+  font-size: 11px;
+  text-align: center;
+  margin: 22px 0;
+}
+.donation-card {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  padding: 27px;
+  background: #20261c;
+  border: 1px solid #3d4832;
+  margin-top: 25px;
+  border-radius: 4px;
+}
+.donation-card > div {
+  flex: 1;
+}
+.donation-card > svg {
+  color: #b8c886;
+}
+.donation-card h3 {
+  margin: 0;
+}
+.admin-panel,
+.profile-panel {
+  max-width: 550px;
+  padding: 35px;
+  background: #1b2419;
+  border: 1px solid #414f34;
+  margin: 35px auto;
+  border-radius: 4px;
+}
+.admin-panel > svg,
+.profile-panel > svg {
+  color: var(--lime);
+  margin-bottom: 24px;
+}
+.admin-panel > .eyebrow {
+  display: block;
+}
+.admin-panel h2,
+.profile-panel h2 {
+  font: 600 30px var(--heading);
+  margin: 12px 0;
+}
+.admin-presets {
+  display: flex;
+  gap: 8px;
+  margin: 15px 0;
+}
+.admin-presets button {
+  font-size: 10px;
+  padding: 9px;
+  flex: 1;
+}
+.profile-panel p {
+  color: #a7b79a;
+}
+.profile-panel form {
+  border-top: 1px solid #37472d;
+  margin-top: 30px;
+  padding: 18px 0 25px;
+}
+.profile-panel form button {
+  margin-top: 25px;
+}
+.crosshair-options {
+  display: flex;
+  gap: 10px;
+  margin: 12px 0;
+}
+.crosshair-options button {
+  display: grid;
+  place-items: center;
+  width: 55px;
+  height: 45px;
+  background: #263020;
+  border: 1px solid #4a583c;
+  border-radius: 3px;
+  font-size: 25px;
+  color: #d6f3ad;
+}
+.crosshair-options .selected {
+  border-color: var(--lime);
+  background: #445331;
+}
+.crosshair-color {
+  display: flex;
+  gap: 12px;
+  margin: 12px 0 24px;
+}
+.crosshair-color button {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 3px solid transparent;
+}
+.crosshair-color .selected {
+  outline: 2px solid #bace97;
+  outline-offset: 3px;
+}
+.reticle-preview {
+  height: 100px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(145deg, #405347, #1a251a);
+  border: 1px solid #3b5033;
+  border-radius: 4px;
+  font-size: 29px;
+  margin-top: 12px;
+}
+.muted {
+  color: #99a58e;
+  font-size: 12px;
+}
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+@media (max-width: 1250px) {
+  .topbar nav button {
+    padding-left: 11px;
+    padding-right: 11px;
+    font-size: 10px;
+  }
+  .player-name {
+    display: none;
+  }
+  .armory-layout {
+    grid-template-columns: 195px 1fr;
+  }
+  .skin-swatch-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+@media (max-width: 850px) {
+  .auth-screen {
+    grid-template-columns: 1fr;
+  }
+  .auth-art {
+    min-height: 360px;
+    padding: 30px;
+  }
+  .auth-art h1 {
+    font-size: 43px;
+    margin: 25px 0;
+  }
+  .auth-art > small,
+  .auth-tags {
+    display: none;
+  }
+  .auth-panel {
+    padding: 35px 25px;
+  }
+  .auth-panel > svg {
+    display: none;
+  }
+  .shop-layout {
+    grid-template-columns: 1fr;
+  }
+  .character-preview {
+    height: 450px;
+  }
+  .outfit-list {
+    grid-template-columns: 1fr 1fr;
+  }
+  .outfit-list > button {
+    padding: 12px;
+    gap: 10px;
+  }
+  .outfit-emblem {
+    height: 45px;
+    width: 45px;
+  }
+  .outfit-list h3 {
+    font-size: 19px;
+  }
+  .armory-layout {
+    grid-template-columns: 155px 1fr;
+    gap: 12px;
+  }
+  .weapon-list > button {
+    padding: 13px 10px;
+    gap: 7px;
+  }
+  .weapon-list > button > span {
+    display: none;
+  }
+  .weapon-list b {
+    font-size: 12px;
+  }
+  .skin-swatch-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .loadout-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .optic-picker {
+    flex-wrap: wrap;
+  }
+  .coin-packs {
+    gap: 10px;
+  }
+  .coin-packs article {
+    padding: 15px;
+  }
+  .coin-packs h2 {
+    font-size: 29px;
+  }
+  .donation-card {
+    flex-wrap: wrap;
+  }
+  .knife-options {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+@media (max-width: 550px) {
+  .armory-layout {
+    display: flex;
+    flex-direction: column;
+  }
+  .weapon-list {
+    width: 100%;
+    max-height: 230px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  .weapon-search {
+    grid-column: 1/-1;
+  }
+  .armory-main {
+    width: 100%;
+  }
+  .weapon-stage .weapon-preview {
+    height: 240px;
+  }
+  .stage-heading {
+    padding: 20px;
+  }
+  .stage-heading h2 em {
+    display: block;
+    margin: 5px 0 0;
+  }
+  .weapon-metrics {
+    padding: 15px;
+    gap: 10px;
+  }
+  .weapon-metrics b {
+    font-size: 20px;
+  }
+  .coin-packs {
+    grid-template-columns: 1fr;
+  }
+  .outfit-list {
+    grid-template-columns: 1fr;
+  }
+  .shop-tabs button {
+    padding: 14px 13px;
+  }
+  .shop-page .page-heading h1 {
+    font-size: 35px;
+  }
+  .admin-panel,
+  .profile-panel {
+    padding: 23px;
+  }
+  .knife-shop .weapon-preview {
+    height: 290px;
+  }
+}
