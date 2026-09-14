@@ -59,7 +59,7 @@ export function wallDistance(origin, dir, boxes) {
     );
   return best;
 }
-export function movePlayer(p, i, dt, boxes) {
+export function movePlayer(p, i, dt, boxes, players = []) {
   p.yaw = i.yaw;
   p.pitch = i.pitch;
   p.crouch = i.crouch;
@@ -96,6 +96,27 @@ export function movePlayer(p, i, dt, boxes) {
     p.vy = 0;
   }
   p.y = next;
+  for (const other of players) {
+    if (other === p || other.health <= 0 || Math.abs(other.y - p.y) > 1.2)
+      continue;
+    const dx = p.x - other.x,
+      dz = p.z - other.z,
+      distance = Math.hypot(dx, dz),
+      minimum = 0.9;
+    if (distance >= minimum) continue;
+    const angle =
+      distance > 0.001
+        ? Math.atan2(dz, dx)
+        : p.id > other.id
+          ? 0
+          : Math.PI;
+    const x = clamp(other.x + Math.cos(angle) * minimum, -24.1, 24.1),
+      z = clamp(other.z + Math.sin(angle) * minimum, -22.1, 22.1);
+    if (!blocked(x, z, boxes, 0.36, p.y)) {
+      p.x = x;
+      p.z = z;
+    }
+  }
   p.moving = Math.hypot(dx, dz) > 0.002;
 }
 const botNames = [
@@ -477,7 +498,7 @@ export class Simulation {
           p.reloading = 0;
         }
       }
-      movePlayer(p, i, dt, this.boxes);
+      movePlayer(p, i, dt, this.boxes, this.players);
       if (
         (i.reload || (i.fire && p.ammo === 0)) &&
         p.ammo < WEAPONS[p.weapon].magazine &&
