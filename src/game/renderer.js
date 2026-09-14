@@ -355,7 +355,7 @@ export class ArenaRenderer {
       p.knife,
     );
     m.gun.scale.setScalar(0.7);
-    m.gun.position.set(0.14, 1.1, -0.34);
+    m.gun.position.set(0.14, 0.96, -0.34);
     m.g.add(m.gun);
     m.weapon = p.weapon;
     this.scene.add(m.g);
@@ -379,7 +379,7 @@ export class ArenaRenderer {
     if (!p) return;
     this.setGun(p.weapon, p.weapon === "knife" ? p.knifeSkin : p.skin, p.knife);
     const smooth = 1 - Math.exp(-22 * dt);
-    const eye = p.y + (p.crouch ? 1.03 : 1.65);
+    const eye = p.y + (p.crouch ? 0.9 : 1.48);
     const dest = new THREE.Vector3(p.x, eye, p.z);
     if (state.remote && this.camera.position.distanceTo(dest) < 5)
       this.camera.position.lerp(dest, smooth);
@@ -461,7 +461,7 @@ export class ArenaRenderer {
           q.knife,
         );
         m.gun.scale.setScalar(0.75);
-        m.gun.position.set(0.18, 1.03, -0.37);
+        m.gun.position.set(0.18, 0.9, -0.37);
         m.g.add(m.gun);
         m.weapon = q.weapon;
       }

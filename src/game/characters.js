@@ -22,8 +22,10 @@ export function createOperator(outfit = "vanguard", team = 0) {
     model = clone(loaded.scene);
   const bounds = new THREE.Box3().setFromObject(model),
     size = bounds.getSize(new THREE.Vector3());
-  model.scale.setScalar(1.85 / size.y);
-  model.position.y = -bounds.min.y * model.scale.y;
+  const modelHeight = 1.6,
+    baseScale = modelHeight / size.y;
+  model.scale.setScalar(baseScale);
+  model.position.y = -bounds.min.y * baseScale;
   model.rotation.y = Math.PI;
   g.add(model);
   model.traverse((o) => {
@@ -51,13 +53,13 @@ export function createOperator(outfit = "vanguard", team = 0) {
     }),
   );
   badge.scale.set(1, 0.5, 0.3);
-  badge.position.set(0.12, 1.37, -0.21);
+  badge.position.set(0.12, 1.18, -0.21);
   g.add(badge);
   const marker = new THREE.Mesh(
     new THREE.OctahedronGeometry(0.1),
     new THREE.MeshBasicMaterial({ color: team === 0 ? "#7ccbff" : "#ffaf70" }),
   );
-  marker.position.y = 2.12;
+  marker.position.y = 1.85;
   g.add(marker);
   const left =
       model.getObjectByName("mixamorigLeftArm") ||
@@ -84,9 +86,10 @@ export function createOperator(outfit = "vanguard", team = 0) {
       mixer.update(dt);
       if (left) left.rotation.z -= 0.8;
       if (right) right.rotation.z += 0.8;
-      model.scale.y = (1.85 / size.y) * (p.crouch ? 0.67 : 1);
-      badge.position.y = p.crouch ? 0.91 : 1.37;
-      marker.position.y = p.crouch ? 1.5 : 2.12;
+      model.scale.y = baseScale * (p.crouch ? 0.67 : 1);
+      model.position.y = -bounds.min.y * model.scale.y;
+      badge.position.y = p.crouch ? 0.79 : 1.18;
+      marker.position.y = p.crouch ? 1.27 : 1.85;
     },
   };
 }
