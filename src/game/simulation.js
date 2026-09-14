@@ -102,7 +102,7 @@ export function movePlayer(p, i, dt, boxes, players = []) {
     const dx = p.x - other.x,
       dz = p.z - other.z,
       distance = Math.hypot(dx, dz),
-      minimum = 0.9;
+      minimum = 1.35;
     if (distance >= minimum) continue;
     const angle =
       distance > 0.001
