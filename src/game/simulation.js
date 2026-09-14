@@ -1,3 +1,4 @@
+import { eyeHeight, PLAYER_HEIGHT, CROUCH_HEIGHT } from "./dimensions.js";
 import { MAPS, WEAPONS } from "./config.js";
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const finite = (v, f = 0) => (Number.isFinite(v) ? v : f);
@@ -15,6 +16,8 @@ export function sanitizeInput(i = {}) {
     fire: !!i.fire,
     aim: !!i.aim,
     reload: !!i.reload,
+    grenadeSeq: clamp(Math.floor(finite(i.grenadeSeq)), 0, 2147483647),
+    grenadeKind: i.grenadeKind === "flash" ? "flash" : "he",
     weapon: Object.hasOwn(WEAPONS, i.weapon) ? i.weapon : null,
   };
 }
@@ -102,14 +105,10 @@ export function movePlayer(p, i, dt, boxes, players = []) {
     const dx = p.x - other.x,
       dz = p.z - other.z,
       distance = Math.hypot(dx, dz),
-      minimum = 1.35;
+      minimum = 0.95;
     if (distance >= minimum) continue;
     const angle =
-      distance > 0.001
-        ? Math.atan2(dz, dx)
-        : p.id > other.id
-          ? 0
-          : Math.PI;
+      distance > 0.001 ? Math.atan2(dz, dx) : p.id > other.id ? 0 : Math.PI;
     const x = clamp(other.x + Math.cos(angle) * minimum, -24.1, 24.1),
       z = clamp(other.z + Math.sin(angle) * minimum, -22.1, 22.1);
     if (!blocked(x, z, boxes, 0.36, p.y)) {
@@ -155,6 +154,8 @@ export class Simulation {
     this.over = false;
     this.botState = {};
     this.loadouts = {};
+    this.grenades = [];
+    this.grenadeSerial = 0;
     this.nav = this.buildNav();
   }
   addPlayer(
@@ -237,6 +238,10 @@ export class Simulation {
     p.spawnAt = 0;
     p.crouch = false;
     p.jumpHeld = false;
+    p.grenadeAmmo = { he: 2, flash: 2 };
+    p.grenadeCooldown = 0;
+    p.flashUntil = 0;
+    p.lastGrenadeSeq = this.inputs[p.id]?.grenadeSeq || p.lastGrenadeSeq || 0;
     delete this.botState[p.id];
     delete this.inputs[p.id];
   }
@@ -247,6 +252,135 @@ export class Simulation {
     this.events.push({ ...e, id: ++this.serial, time: this.time });
     if (this.events.length > 70) this.events.shift();
   }
+  throwGrenade(p, input) {
+    if (!input.grenadeSeq || input.grenadeSeq <= (p.lastGrenadeSeq || 0))
+      return;
+    p.lastGrenadeSeq = input.grenadeSeq;
+    const kind = input.grenadeKind;
+    if (
+      p.health <= 0 ||
+      p.grenadeCooldown > this.time ||
+      p.grenadeAmmo[kind] <= 0
+    )
+      return;
+    p.grenadeAmmo[kind]--;
+    p.grenadeCooldown = this.time + 0.8;
+    const pitch = Math.min(1.2, p.pitch + 0.16),
+      speed = 13;
+    this.grenades.push({
+      id: ++this.grenadeSerial,
+      player: p.id,
+      kind,
+      x: p.x,
+      y: eyeHeight(p),
+      z: p.z,
+      vx: -Math.sin(p.yaw) * Math.cos(pitch) * speed,
+      vy: Math.sin(pitch) * speed + 2.5,
+      vz: -Math.cos(p.yaw) * Math.cos(pitch) * speed,
+      fuse: this.time + (kind === "flash" ? 1.45 : 2.1),
+    });
+    this.event({ type: "throw", player: p.id, kind });
+  }
+  stepGrenades(dt) {
+    for (let n = this.grenades.length - 1; n >= 0; n--) {
+      const g = this.grenades[n];
+      g.vy -= 15 * dt;
+      const nextX = g.x + g.vx * dt,
+        nextZ = g.z + g.vz * dt;
+      if (blocked(nextX, g.z, this.boxes, 0.12, g.y)) g.vx *= -0.45;
+      else g.x = nextX;
+      if (blocked(g.x, nextZ, this.boxes, 0.12, g.y)) g.vz *= -0.45;
+      else g.z = nextZ;
+      let floor = 0.12;
+      for (const b of this.boxes)
+        if (
+          Math.abs(g.x - b.x) < b.w / 2 + 0.1 &&
+          Math.abs(g.z - b.z) < b.d / 2 + 0.1 &&
+          g.y >= b.h - 0.01
+        )
+          floor = Math.max(floor, b.h + 0.12);
+      g.y += g.vy * dt;
+      if (g.y < floor) {
+        g.y = floor;
+        g.vy = Math.abs(g.vy) * 0.32;
+        g.vx *= 0.7;
+        g.vz *= 0.7;
+      }
+      if (this.time >= g.fuse) {
+        this.explodeGrenade(g);
+        this.grenades.splice(n, 1);
+      }
+    }
+  }
+  explodeGrenade(g) {
+    this.event({
+      type: "explosion",
+      kind: g.kind,
+      at: [g.x, g.y, g.z],
+      player: g.player,
+    });
+    const owner = this.players.find((p) => p.id === g.player);
+    if (!owner) return;
+    for (const p of this.players) {
+      if (p.health <= 0 || p.protect > this.time) continue;
+      const eye = [p.x, eyeHeight(p), p.z],
+        dx = eye[0] - g.x,
+        dy = eye[1] - g.y,
+        dz = eye[2] - g.z,
+        distance = Math.hypot(dx, dy, dz),
+        radius = g.kind === "flash" ? 18 : 8;
+      if (distance >= radius) continue;
+      const direction =
+        distance > 0.001
+          ? [dx / distance, dy / distance, dz / distance]
+          : [0, 1, 0];
+      if (
+        wallDistance([g.x, g.y, g.z], direction, this.boxes) <
+        distance - 0.15
+      )
+        continue;
+      if (g.kind === "flash") {
+        const toward =
+          -Math.sin(p.yaw) * Math.cos(p.pitch) * -direction[0] +
+          Math.sin(p.pitch) * -direction[1] +
+          -Math.cos(p.yaw) * Math.cos(p.pitch) * -direction[2];
+        const duration = (toward > 0.2 ? 2.8 : 0.65) * (1 - distance / radius);
+        p.flashUntil = Math.max(p.flashUntil || 0, this.time + duration);
+        this.event({ type: "flash", victim: p.id, duration });
+      } else if (p.team !== owner.team) {
+        const damage = Math.max(1, Math.round(115 * (1 - distance / radius)));
+        this.damagePlayer(owner, p, damage, false, "grenade", "standard");
+      }
+    }
+  }
+  damagePlayer(attacker, victim, damage, head, weapon, skin) {
+    victim.health = Math.max(0, victim.health - damage);
+    this.event({
+      type: "hit",
+      player: attacker.id,
+      victim: victim.id,
+      head,
+      damage,
+    });
+    if (victim.health > 0) return;
+    victim.deaths++;
+    attacker.kills++;
+    this.score[attacker.team]++;
+    victim.spawnAt = this.time + 3;
+    this.event({
+      type: "kill",
+      player: attacker.id,
+      name: attacker.name,
+      victim: victim.id,
+      victimName: victim.name,
+      skin,
+      knife: attacker.knife,
+      team: attacker.team,
+      head,
+      weapon,
+    });
+    if (this.score[attacker.team] >= this.target) this.finish();
+  }
   shoot(p) {
     const w = WEAPONS[p.weapon];
     if (p.cooldown > 0 || p.reloading > 0 || p.ammo <= 0) return;
@@ -255,7 +389,7 @@ export class Simulation {
     p.cooldown = w.rate;
     const yaw = p.yaw,
       pitch = p.pitch;
-    const origin = [p.x, p.y + (p.crouch ? 1.03 : 1.65), p.z];
+    const origin = [p.x, eyeHeight(p), p.z];
     const dir = [
       -Math.sin(yaw) * Math.cos(pitch),
       Math.sin(pitch),
@@ -269,7 +403,7 @@ export class Simulation {
       head = false;
     for (const q of this.players) {
       if (q.id === p.id || q.health <= 0) continue;
-      const h = q.crouch ? 1.25 : 1.85;
+      const h = q.crouch ? CROUCH_HEIGHT : PLAYER_HEIGHT;
       const d = rayBox(
         origin,
         dir,
@@ -292,34 +426,19 @@ export class Simulation {
     });
     if (victim && victim.team !== p.team && this.time >= victim.protect) {
       const dmg = Math.round(w.damage * (head ? 2.2 : 1));
-      victim.health = Math.max(0, victim.health - dmg);
       p.hits++;
-      this.event({
-        type: "hit",
-        player: p.id,
-        victim: victim.id,
+      this.damagePlayer(
+        p,
+        victim,
+        dmg,
         head,
-        damage: dmg,
-      });
-      if (victim.health === 0) {
-        victim.deaths++;
-        p.kills++;
-        this.score[p.team]++;
-        victim.spawnAt = this.time + 3;
-        this.event({
-          type: "kill",
-          player: p.id,
-          name: p.name,
-          victim: victim.id,
-          victimName: victim.name,
-          skin: p.weapon === "knife" ? p.knifeSkin : p.skin,
-          knife: p.knife,
-          team: p.team,
-          head,
-          weapon: p.weapon,
-        });
-        if (this.score[p.team] >= this.target) this.finish();
-      }
+        p.weapon,
+        p.weapon === "knife"
+          ? p.knifeSkin
+          : p.weapon === "pistol"
+            ? "standard"
+            : p.skin,
+      );
     }
   }
   buildNav() {
@@ -392,8 +511,8 @@ export class Simulation {
     const dx = q.x - p.x,
       dz = q.z - p.z,
       dist = Math.hypot(dx, dz);
-    const oy = p.y + 1.65,
-      ty = q.y + (q.crouch ? 0.8 : 1.25),
+    const oy = eyeHeight(p),
+      ty = q.y + (q.crouch ? 0.72 : 1.08),
       dy = ty - oy;
     const length = Math.hypot(dx, dy, dz),
       dir = [dx / length, dy / length, dz / length];
@@ -499,6 +618,7 @@ export class Simulation {
         }
       }
       movePlayer(p, i, dt, this.boxes, this.players);
+      this.throwGrenade(p, i);
       if (
         (i.reload || (i.fire && p.ammo === 0)) &&
         p.ammo < WEAPONS[p.weapon].magazine &&
@@ -511,6 +631,7 @@ export class Simulation {
       if (i.fire) this.shoot(p, i);
       if (p.bot && p.reserve <= 0) p.reserve = 90;
     }
+    if (!this.over) this.stepGrenades(dt);
   }
   finish() {
     if (this.over) return;
@@ -528,6 +649,7 @@ export class Simulation {
   view() {
     return {
       players: this.players,
+      grenades: this.grenades,
       time: this.time,
       remaining: this.remaining,
       score: this.score,
@@ -545,13 +667,23 @@ export class Simulation {
             key,
             typeof value === "number"
               ? Math.round(value * 10000) / 10000
-              : value,
+              : value && typeof value === "object"
+                ? { ...value }
+                : value,
           ]),
         ),
       ),
       time: this.time,
       remaining: this.remaining,
       score: [...this.score],
+      grenades: this.grenades.map((g) => ({
+        id: g.id,
+        kind: g.kind,
+        x: Math.round(g.x * 1000) / 1000,
+        y: Math.round(g.y * 1000) / 1000,
+        z: Math.round(g.z * 1000) / 1000,
+        fuse: g.fuse,
+      })),
       target: this.target,
       over: this.over,
       events: this.events.filter((e) => e.id > since).slice(-40),

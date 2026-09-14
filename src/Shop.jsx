@@ -38,7 +38,7 @@ export default function Shop({ onNotice }) {
     s = SKINS.find((s) => s.id === skin) || SKINS[0],
     cost =
       (profile.knifeOwned.includes(k.id) ? 0 : k.price) +
-      (profile.owned.includes(s.id) ? 0 : s.price);
+      ((profile.knifeSkinOwned || ["standard"]).includes(s.id) ? 0 : s.price);
   return (
     <main className="lobby subpage shop-page">
       <div className="page-heading">
@@ -174,7 +174,7 @@ export default function Shop({ onNotice }) {
             {SKINS.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.name}{" "}
-                {profile.owned.includes(s.id)
+                {(profile.knifeSkinOwned || ["standard"]).includes(s.id)
                   ? "· Sizniki"
                   : "· " + s.price + " coin"}
               </option>
@@ -187,7 +187,7 @@ export default function Shop({ onNotice }) {
               run(async () => {
                 if (!profile.knifeOwned.includes(k.id))
                   await buy("knife", k.id);
-                if (!profile.owned.includes(s.id)) await buy("skin", s.id);
+                if (!(profile.knifeSkinOwned || ["standard"]).includes(s.id)) await buy("knifeSkin", s.id);
                 await update({ knife: k.id, knifeSkin: s.id });
                 onNotice("Pichoq va skini tanlandi.");
               })

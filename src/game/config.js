@@ -184,6 +184,7 @@ export const CONTROLS = [
   ["C / CTRL", "O‘tirish"],
   ["R", "Qayta o‘qlash"],
   ["1 / 2 / 3", "Asosiy qurol / Pistol / Pichoq"],
+  ["G / H", "Granata / Flashbang"],
   ["TAB", "Jang natijalari"],
   ["ESC", "Tanaffus / kursor"],
 ];

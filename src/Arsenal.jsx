@@ -2,25 +2,35 @@ import { useState } from "react";
 import { Check, Lock, Coins, Search, Crosshair, Sparkles } from "lucide-react";
 import { useAccount } from "./Account.jsx";
 import GunPreview from "./GunPreview.jsx";
-import { PRIMARY_WEAPONS, SKINS, OPTICS, skinFor } from "./game/catalog.js";
+import {
+  PRIMARY_WEAPONS,
+  SKINS,
+  OPTICS,
+  FINISH_TIERS,
+  skinFor,
+  ownsWeaponSkin,
+  equippedSkin,
+} from "./game/catalog.js";
+import "./skin-collection.css";
 export default function Arsenal({ onNotice }) {
   const { profile, mutate, update } = useAccount(),
     [weapon, setWeapon] = useState(profile.weapon),
-    [skin, setSkin] = useState(profile.skin),
+    [skin, setSkin] = useState(equippedSkin(profile)),
+    [tier, setTier] = useState("all"),
     [busy, setBusy] = useState(false),
     [query, setQuery] = useState("");
   const w = PRIMARY_WEAPONS.find((w) => w.id === weapon) || PRIMARY_WEAPONS[0],
     s = skinFor(skin),
     cost =
       (profile.weaponOwned.includes(w.id) ? 0 : w.price) +
-      (profile.owned.includes(s.id) ? 0 : s.price);
+      (ownsWeaponSkin(profile, w.id, s.id) ? 0 : s.price);
   const equip = async () => {
     setBusy(true);
     try {
       if (!profile.weaponOwned.includes(w.id))
         await mutate("purchase", { kind: "weapon", id: w.id });
-      if (!profile.owned.includes(s.id))
-        await mutate("purchase", { kind: "skin", id: s.id });
+      if (!ownsWeaponSkin(profile, w.id, s.id))
+        await mutate("purchase", { kind: "skin", id: s.id, weapon: w.id });
       await update({ weapon: w.id, skin: s.id });
       onNotice(w.name + " — jangga tayyor.");
     } catch (e) {
@@ -38,7 +48,7 @@ export default function Arsenal({ onNotice }) {
             Arsenal<span>.</span>
           </h1>
         </div>
-        <span className="build-badge">20 ASOSIY QUROL</span>
+        <span className="build-badge">24 ASOSIY QUROL</span>
       </div>
       <div className="armory-layout">
         <aside className="weapon-list">
@@ -57,7 +67,10 @@ export default function Arsenal({ onNotice }) {
             <button
               key={item.id}
               className={weapon === item.id ? "selected" : ""}
-              onClick={() => setWeapon(item.id)}
+              onClick={() => {
+                setWeapon(item.id);
+                setSkin(equippedSkin(profile, item.id));
+              }}
             >
               <span>{String(index + 1).padStart(2, "0")}</span>
               <div>
@@ -83,7 +96,7 @@ export default function Arsenal({ onNotice }) {
               </div>
               {s.broadcast && <Sparkles size={22} />}
             </div>
-            <GunPreview weapon={w.id} skin={s.id} />
+            <GunPreview weapon={w.id} skin={s.id} optic={profile.optic} />
             <div className="weapon-metrics">
               <div>
                 <small>ZARBA</small>
@@ -150,41 +163,62 @@ export default function Arsenal({ onNotice }) {
             <Crosshair size={20} />
           </div>
           <div className="section-title">
-            <h3>QUROL SKINLARI</h3>
-            <span>{SKINS.length} VARIANT</span>
+            <h3>{w.name} SKINLARI</h3>
+            <span>30 SKIN + FIELD ISSUE</span>
           </div>
-          <div className="skin-swatch-grid">
-            {SKINS.map((item) => (
+          <p className="finish-explainer">
+            Xarid qilingan skin faqat <b>{w.name}</b> uchun saqlanadi. Boshqa
+            qurollar o‘z skinini saqlaydi.
+          </p>
+          <div className="finish-tabs">
+            {FINISH_TIERS.map((t) => (
               <button
-                key={item.id}
-                style={{ "--skin": item.color, "--accent": item.accent }}
-                className={
-                  "skin-swatch " +
-                  (skin === item.id ? "selected " : "") +
-                  (item.evolution || "")
-                }
-                onClick={() => setSkin(item.id)}
+                key={t.id}
+                className={tier === t.id ? "active" : ""}
+                onClick={() => setTier(t.id)}
               >
-                <div className="skin-sample">
-                  <i />
-                  <i />
-                  <i />
-                </div>
-                <b>{item.name}</b>
-                <small>
-                  {item.rarity}
-                  {item.broadcast ? " · KILLFEED" : ""}
-                </small>
-                <span>
-                  {profile.owned.includes(item.id)
-                    ? "SIZNIKI"
-                    : item.price + " COIN"}
-                </span>
+                {t.name.replace("?", "·")}
               </button>
             ))}
           </div>
+          <div className="skin-swatch-grid">
+            {SKINS.filter((item) => tier === "all" || item.tier === tier).map(
+              (item) => (
+                <button
+                  key={item.id}
+                  style={{ "--skin": item.color, "--accent": item.accent }}
+                  className={
+                    "skin-swatch " +
+                    (skin === item.id ? "selected " : "") +
+                    (item.evolution || "") +
+                    (item.animated ? " finish-animated" : "")
+                  }
+                  onClick={() => setSkin(item.id)}
+                >
+                  <div className="skin-sample">
+                    <i />
+                    <i />
+                    <i />
+                  </div>
+                  <b>{item.name}</b>
+                  <small>
+                    {item.rarity}
+                    {item.broadcast ? " · KILLFEED" : ""}
+                  </small>
+                  <span>
+                    {ownsWeaponSkin(profile, w.id, item.id)
+                      ? "SIZNIKI"
+                      : item.price + " COIN"}
+                  </span>
+                </button>
+              ),
+            )}
+          </div>
           {s.broadcast && (
-            <div className={"broadcast-preview broadcast-" + s.evolution}>
+            <div
+              className={"broadcast-preview " + s.feedClass}
+              style={{ "--feed-color": s.accent }}
+            >
               <Sparkles size={18} />
               <b>{profile.name}</b>
               <span>{w.name}</span>

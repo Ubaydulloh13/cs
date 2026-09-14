@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
-import { makeGun } from "./game/models.js";
+import { loadWeaponAssets } from "./game/weapon-assets.js";
+import { makeGun, disposeGroup, updateGunAnimation } from "./game/models.js";
 import { SKINS } from "./game/config.js";
 export function GunThumbnail({ skin = "standard" }) {
   const ref = useRef(null);
@@ -105,7 +106,12 @@ export function GunThumbnail({ skin = "standard" }) {
     />
   );
 }
-export default function GunPreview({ weapon, skin, knife = "combat" }) {
+export default function GunPreview({
+  weapon,
+  skin,
+  knife = "combat",
+  optic = "red-dot",
+}) {
   const ref = useRef(null),
     [error, setError] = useState(false);
   useEffect(() => {
@@ -132,7 +138,19 @@ export default function GunPreview({ weapon, skin, knife = "combat" }) {
     const fill = new THREE.DirectionalLight("#adcb83", 2);
     fill.position.set(-3, 1, -2);
     scene.add(fill);
-    const gun = makeGun(weapon, skin, knife);
+    let dead = false;
+    let gun = makeGun(weapon, skin, knife, optic);
+    loadWeaponAssets()
+      .then(() => {
+        if (dead) return;
+        const old = gun;
+        gun = makeGun(weapon, skin, knife, optic);
+        gun.rotation.copy(old.rotation);
+        scene.remove(old);
+        disposeGroup(old);
+        scene.add(gun);
+      })
+      .catch(() => {});
     gun.rotation.set(0.06, -0.5, -0.1);
     scene.add(gun);
     const resize = () => {
@@ -162,13 +180,15 @@ export default function GunPreview({ weapon, skin, knife = "combat" }) {
     el.addEventListener("pointermove", move);
     el.addEventListener("pointerup", up);
     el.addEventListener("pointercancel", up);
-    const animate = () => {
+    const animate = (now = performance.now()) => {
       frame = requestAnimationFrame(animate);
       if (lastX === null) gun.rotation.y += 0.002;
+      updateGunAnimation(gun, now / 1000);
       renderer.render(scene, camera);
     };
     animate();
     return () => {
+      dead = true;
       cancelAnimationFrame(frame);
       observer.disconnect();
       el.removeEventListener("pointerdown", down);
@@ -182,7 +202,7 @@ export default function GunPreview({ weapon, skin, knife = "combat" }) {
       renderer.dispose();
       renderer.domElement.remove();
     };
-  }, [weapon, skin, knife]);
+  }, [weapon, skin, knife, optic]);
   return (
     <div className="weapon-preview" ref={ref}>
       {error && <GunThumbnail skin={skin} />}

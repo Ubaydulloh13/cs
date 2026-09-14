@@ -15,6 +15,7 @@ const mime = {
   ".webp": "image/webp",
   ".jpg": "image/jpeg",
   ".glb": "model/gltf-binary",
+  ".obj": "text/plain; charset=utf-8",
 };
 async function walk(dir) {
   for (const item of await readdir(dir, { withFileTypes: true })) {

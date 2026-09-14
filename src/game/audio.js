@@ -2,6 +2,7 @@ export class GameAudio {
   constructor(volume = 0.45) {
     this.volume = volume;
     this.ctx = null;
+    this.shotBuffers = new Map();
   }
   unlock() {
     if (!this.ctx)
@@ -27,11 +28,15 @@ export class GameAudio {
   shot(weapon, local = true) {
     if (!this.ctx || !this.volume) return;
     const c = this.ctx,
-      len = weapon === "awp" ? 0.28 : 0.13,
-      buffer = c.createBuffer(1, Math.floor(c.sampleRate * len), c.sampleRate),
-      data = buffer.getChannelData(0);
-    for (let i = 0; i < data.length; i++)
-      data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
+      len = weapon === "awp" ? 0.28 : 0.13;
+    let buffer = this.shotBuffers.get(len);
+    if (!buffer) {
+      buffer = c.createBuffer(1, Math.floor(c.sampleRate * len), c.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < data.length; i++)
+        data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
+      this.shotBuffers.set(len, buffer);
+    }
     const noise = c.createBufferSource(),
       filter = c.createBiquadFilter(),
       gain = c.createGain();
@@ -65,6 +70,7 @@ export class GameAudio {
     this.tone(80, 0.055, 0.07, "triangle", 30);
   }
   dispose() {
+    this.shotBuffers.clear();
     this.ctx?.close().catch(() => {});
   }
 }

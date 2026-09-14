@@ -1,6 +1,10 @@
 import { mkdir, writeFile } from "node:fs/promises";
 const assets = [
   [
+    "models/ak47.obj",
+    "https://opengameart.org/sites/default/files/highpoly_ak47.obj",
+  ],
+  [
     "models/soldier.glb",
     "https://threejs.org/examples/models/gltf/Soldier.glb",
   ],

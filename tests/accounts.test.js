@@ -205,3 +205,43 @@ test("Match rewards require a ticket, elapsed time and single completion", async
     DB.close();
   }
 });
+
+test("Buying a finish applies only to its weapon and survives switching back", async () => {
+  const DB = openDatabase();
+  try {
+    const c = client({ DB });
+    await signup(c);
+    let r = await c.call("purchase", {
+      kind: "skin",
+      id: "crimson",
+      weapon: "ak",
+    });
+    assert.equal(r.status, 200);
+    assert.equal(r.data.profile.coins, 500);
+    assert.ok(r.data.profile.skinOwned.includes("ak:crimson"));
+    assert.ok(!r.data.profile.skinOwned.includes("m4:crimson"));
+    r = await c.call("profile", { weapon: "ak", skin: "crimson" });
+    assert.equal(r.status, 200);
+    assert.equal(r.data.profile.skin, "crimson");
+    assert.equal(
+      (await c.call("profile", { weapon: "m4", skin: "crimson" })).status,
+      403,
+    );
+    r = await c.call("profile", { weapon: "m4" });
+    assert.equal(r.data.profile.skin, "standard");
+    r = await c.call("profile", { weapon: "ak" });
+    assert.equal(r.data.profile.skin, "crimson");
+    assert.equal(
+      (await c.call("profile", { knifeSkin: "crimson" })).status,
+      403,
+    );
+    r = await c.call("purchase", {
+      kind: "skin",
+      id: "crimson",
+      weapon: "ak",
+    });
+    assert.equal(r.data.profile.coins, 500);
+  } finally {
+    DB.close();
+  }
+});

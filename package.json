@@ -3,8 +3,11 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
+  "engines": {
+    "node": ">=22.13.0"
+  },
   "scripts": {
-    "dev": "vite",
+    "dev": "node scripts/start-dev.mjs",
     "build": "node scripts/embed-migrations.mjs && vite build && node scripts/package-worker.mjs",
     "lint": "oxlint",
     "preview": "vite preview",

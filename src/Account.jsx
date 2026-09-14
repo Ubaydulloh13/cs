@@ -178,7 +178,7 @@ function AuthScreen({ login, initialError }) {
             <br />
             <em>Sizning maydon.</em>
           </h1>
-          <p>20 asosiy qurol. 6 arena. Siz tanlagan operator.</p>
+          <p>24 asosiy qurol. 6 arena. Siz tanlagan operator.</p>
           <div className="auth-tags">
             <span>1v1 — 6v6</span>
             <span>DO‘STLAR BILAN</span>

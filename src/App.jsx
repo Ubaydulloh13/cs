@@ -44,6 +44,7 @@ import "./panels.css";
 const Game = lazy(() =>
   Promise.all([
     import("./game/Game.jsx"),
+    import("./game/weapon-assets.js").then((m) => m.loadWeaponAssets()),
     import("./game/characters.js").then((m) => m.loadCharacters()),
   ]).then(([module]) => module),
 );
@@ -951,7 +952,7 @@ function AppShell() {
               <span className="season-tag">02-MAVSUM // EVOLUTION</span>
               <h3>Maydon sizniki.</h3>
               <p>
-                Oltita arena, 20 asosiy qurol, 16 skin, pichoqlar va 1v1 dan 6v6
+                Oltita arena, 24 asosiy qurol, 30 skin, pichoqlar va 1v1 dan 6v6
                 gacha janglar. Botlar bilan mashq qiling yoki do‘stlaringizni
                 xonaga chaqiring.
               </p>

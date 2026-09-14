@@ -2,10 +2,12 @@ import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { WEAPONS, skinFor } from "./catalog.js";
+import { detailedAK } from "./weapon-assets.js";
 const textures = new Map();
-function finish(s) {
+function finish(s, weapon) {
   if (typeof document === "undefined") return null;
-  if (textures.has(s.id)) return textures.get(s.id);
+  const key = s.id + ":" + weapon.id;
+  if (textures.has(key)) return textures.get(key);
   const c = document.createElement("canvas");
   c.width = c.height = 256;
   const x = c.getContext("2d");
@@ -13,17 +15,42 @@ function finish(s) {
   x.fillRect(0, 0, 256, 256);
   x.fillStyle = s.accent;
   for (let i = 0; i < 18; i++) {
-    const a = (i * 73) % 256,
-      b = (i * 127) % 256;
+    const seed = Array.from(weapon.id).reduce((n, c) => n + c.charCodeAt(0), 0);
+    const a = (i * 73 + seed) % 256,
+      b = (i * 127 + seed * 3) % 256;
     x.globalAlpha = s.id === "standard" ? 0.09 : 0.55;
     x.beginPath();
-    if (s.evolution === "ice") {
+    if (s.pattern === "shards") {
       x.moveTo(a, b);
       x.lineTo(a + 40, b - 25);
       x.lineTo(a + 9, b + 80);
-    } else if (s.evolution === "cyber") {
+    } else if (s.pattern === "circuit") {
       x.fillRect(a, b, 3, 80);
       x.fillRect(a, b, 40, 3);
+    } else if (s.pattern === "racing" || s.pattern === "tiger") {
+      x.moveTo(a, b);
+      x.lineTo(a + 25, b - 60);
+      x.lineTo(a + 60, b - 75);
+      x.lineTo(a + 15, b + 90);
+    } else if (s.pattern === "hex" || s.pattern === "scales") {
+      for (let j = 0; j < 6; j++) {
+        const angle = (j * Math.PI) / 3;
+        x.lineTo(a + Math.cos(angle) * 20, b + Math.sin(angle) * 20);
+      }
+      x.closePath();
+    } else if (s.pattern === "wave") {
+      x.strokeStyle = s.accent;
+      x.lineWidth = 5;
+      x.moveTo(0, b);
+      x.bezierCurveTo(80, b - 60, 160, b + 60, 256, b);
+      x.stroke();
+    } else if (s.pattern === "stars") {
+      x.arc(a, b, 2 + (i % 3), 0, Math.PI * 2);
+    } else if (s.pattern === "engraved") {
+      x.strokeStyle = s.accent;
+      x.lineWidth = 1;
+      x.arc(a, b, 12 + i, 0, Math.PI * 2);
+      x.stroke();
     } else {
       x.ellipse(a, b, 24, 7, i * 0.8, 0, Math.PI * 2);
     }
@@ -31,7 +58,7 @@ function finish(s) {
   }
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
-  textures.set(s.id, t);
+  textures.set(key, t);
   return t;
 }
 export function disposeGroup(g) {
@@ -88,7 +115,7 @@ export function makeGun(
     }),
     paint = new THREE.MeshStandardMaterial({
       color: s.evolution === "ice" ? "#d7f3ff" : "#ffffff",
-      map: finish(s),
+      map: finish(s, w),
       metalness: s.id === "gold" ? 0.9 : 0.48,
       roughness: s.evolution === "ice" ? 0.15 : 0.36,
     }),
@@ -99,6 +126,39 @@ export function makeGun(
       emissive: s.evolution ? s.accent : "#000",
       emissiveIntensity: s.evolution ? 0.2 : 0,
     });
+  if (s.animated) {
+    const time = { value: 0 };
+    paint.userData.finishTime = time;
+    paint.userData.finishTint = new THREE.Color(s.accent);
+    paint.onBeforeCompile = (shader) => {
+      shader.uniforms.uFinishTime = time;
+      shader.uniforms.uFinishTint = { value: paint.userData.finishTint };
+      shader.vertexShader = shader.vertexShader
+        .replace(
+          "#include <common>",
+          "#include <common>\nvarying vec3 vFinishPosition;",
+        )
+        .replace(
+          "#include <begin_vertex>",
+          "#include <begin_vertex>\nvFinishPosition = position;",
+        );
+      shader.fragmentShader = shader.fragmentShader
+        .replace(
+          "#include <common>",
+          "#include <common>\nvarying vec3 vFinishPosition;\nuniform float uFinishTime;\nuniform vec3 uFinishTint;",
+        )
+        .replace(
+          "#include <color_fragment>",
+          "#include <color_fragment>\nfloat finishPulse=pow(max(0.0,sin(vFinishPosition.z*28.0+vFinishPosition.y*18.0-uFinishTime*2.2)),12.0);\ndiffuseColor.rgb=mix(diffuseColor.rgb,uFinishTint,finishPulse*0.62);",
+        )
+        .replace(
+          "#include <emissivemap_fragment>",
+          "#include <emissivemap_fragment>\ntotalEmissiveRadiance += uFinishTint * finishPulse * 0.25;",
+        );
+    };
+    paint.customProgramCacheKey = () => "animated-finish-v1";
+  }
+  g.userData.animatedMaterials = s.animated ? [paint, accent] : [];
   const add = (geo, mat, x, y, z) => {
     const m = new THREE.Mesh(geo, mat);
     m.position.set(x, y, z);
@@ -134,7 +194,24 @@ export function makeGun(
     geom.rotateY(Math.PI / 2);
     return add(geom, mat, x - depth / 2, y, z);
   };
-  if (w.family === "knife") {
+  const imported = w.family === "ak" ? detailedAK() : null;
+  if (imported) {
+    add(imported, paint, 0, 0, 0);
+    // Retain the artist's actual receiver, curved magazine, stock and iron sights.
+    if (w.id === "asval") tube(0.031, 0.28, 0, -0.001, -0.48, steel);
+    if (w.id === "ak12" || w.id === "an94")
+      for (let n = 0; n < 9; n++)
+        box(0.084, 0.009, 0.018, 0, 0.047, -0.25 + n * 0.033, steel);
+    if (optic === "holo" || optic === "red-dot") {
+      box(0.07, 0.018, 0.1, 0, 0.054, 0.03, steel);
+      box(0.013, 0.057, 0.025, -0.034, 0.089, 0.03, steel);
+      box(0.013, 0.057, 0.025, 0.034, 0.089, 0.03, steel);
+      box(0.08, 0.012, 0.025, 0, 0.117, 0.03, steel);
+    } else {
+      tube(0.039, 0.18, 0, 0.11, -0.02, steel);
+      tube(0.05, 0.05, 0, 0.11, -0.12, steel);
+    }
+  } else if (w.family === "knife") {
     const curved = ["karambit", "talon"].includes(knifeId);
     const grip = box(0.07, 0.075, 0.25, 0, 0, 0.13, rubber);
     grip.rotation.x = -0.14;
@@ -369,4 +446,12 @@ export function makeGun(
   }
   mergeStatic(g);
   return g;
+}
+export function updateGunAnimation(g, time) {
+  for (const material of g.userData.animatedMaterials || []) {
+    if (material.userData.finishTime) material.userData.finishTime.value = time;
+    else
+      material.emissiveIntensity =
+        0.15 + 0.18 * (0.5 + 0.5 * Math.sin(time * 2.2));
+  }
 }

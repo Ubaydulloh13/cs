@@ -4,8 +4,8 @@ import * as THREE from "three";
 import { Simulation, sanitizeInput } from "../src/game/simulation.js";
 import { PRIMARY_WEAPONS, KNIVES, WEAPONS } from "../src/game/catalog.js";
 import { makeGun, disposeGroup } from "../src/game/models.js";
-test("All 20 primaries fire continuously exactly along camera center including ADS at elevation", () => {
-  assert.equal(PRIMARY_WEAPONS.length, 20);
+test("All 24 primaries fire continuously exactly along camera center including ADS at elevation", () => {
+  assert.equal(PRIMARY_WEAPONS.length, 24);
   for (const weapon of PRIMARY_WEAPONS) {
     const sim = new Simulation({ size: 1 });
     sim.boxes = [];

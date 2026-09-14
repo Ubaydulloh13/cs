@@ -1,0 +1,19 @@
+.finish-explainer { margin: 0 0 16px; color: #9aa3a1; font-size: 13px; line-height: 1.65; }
+.finish-explainer b { color: #e4ece2; }
+.finish-tabs { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 17px; }
+.finish-tabs button { border: 1px solid #ffffff15; border-radius: 4px; padding: 10px 13px; color: #adb8b1; background: #101612; cursor: pointer; font-size: 11px; }
+.finish-tabs button.active { color: #cbfa83; border-color: #b7e36c80; background: #b7e36c12; }
+.finish-animated .skin-sample { position: relative; overflow: hidden; }
+.finish-animated .skin-sample::after { content: ''; position: absolute; inset: -100%; background: linear-gradient(112deg, transparent 30%, var(--accent) 46%, #ffffffc0 50%, transparent 57%); opacity: .5; animation: finish-current 3s linear infinite; mix-blend-mode: screen; }
+.broadcast-animated { --feed-color: #91defc; position: relative; overflow: hidden; isolation: isolate; border: 1px solid color-mix(in srgb,var(--feed-color),transparent 30%) !important; background: linear-gradient(100deg,#112a38eb,#12222eef 70%,color-mix(in srgb,var(--feed-color),#0c1726 72%)) !important; box-shadow: inset 0 0 22px color-mix(in srgb,var(--feed-color),transparent 86%),0 0 12px #0005; }
+.broadcast-animated::before { content: ''; position: absolute; inset: -1px; z-index: -1; background: repeating-linear-gradient(115deg,transparent 0 32px,color-mix(in srgb,var(--feed-color),transparent 78%) 33px 35px,transparent 36px 72px); animation: broadcast-flow 3s linear infinite; }
+.broadcast-animated::after { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(105deg,transparent 25%,#ffffff55 50%,transparent 60%); transform: translateX(-110%); animation: broadcast-sheen 2.4s ease-out infinite; }
+.broadcast-flame,.broadcast-dragon,.broadcast-nova { --feed-color: #ffb464; }
+.broadcast-cosmic,.broadcast-spectral { --feed-color: #c99aff; }
+.broadcast-serpent,.broadcast-abyss { --feed-color: #76efd0; }
+.broadcast-lightning { --feed-color: #becdff; }
+.broadcast-eclipse { --feed-color: #ffd384; }
+@keyframes finish-current { from { transform: translateX(-24%); } to { transform: translateX(30%); } }
+@keyframes broadcast-flow { from { background-position: 0 0; } to { background-position: 80px 0; } }
+@keyframes broadcast-sheen { 0% { transform: translateX(-110%); } 70%,100% { transform: translateX(110%); } }
+@media (prefers-reduced-motion: reduce) { .finish-animated .skin-sample::after,.broadcast-animated::before,.broadcast-animated::after { animation: none; } }

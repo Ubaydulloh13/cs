@@ -1,8 +1,15 @@
+import { eyeHeight } from "./dimensions.js";
 import * as THREE from "three";
 import { createOperator } from "./characters.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { MAPS, WEAPONS, OPTICS } from "./config.js";
-import { makeGun, mergeStatic, disposeGroup } from "./models.js";
+import { addScenery, makeHands } from "./scenery.js";
+import {
+  makeGun,
+  mergeStatic,
+  disposeGroup,
+  updateGunAnimation,
+} from "./models.js";
 export { makeGun } from "./models.js";
 const material = (color, roughness = 0.8) =>
   new THREE.MeshStandardMaterial({ color, roughness, metalness: 0.15 });
@@ -83,7 +90,7 @@ export class ArenaRenderer {
     this.slash = 0;
     this.currentGun = "";
     this.lastSpawn = 0;
-    this.scene.add(new THREE.HemisphereLight("#e6eee3", "#77735b", 2));
+    this.scene.add(new THREE.HemisphereLight("#b9defa", "#b89c6e", 2));
     const sun = new THREE.DirectionalLight("#fff1cf", 3);
     sun.position.set(-24, 38, 19);
     sun.castShadow = true;
@@ -96,6 +103,8 @@ export class ArenaRenderer {
     this.scene.add(sun);
     this.createMap(map);
     mergeStatic(this.scene);
+    addScenery(this.scene, config.map);
+    this.projectiles = new Map();
     this.handGroup = new THREE.Group();
     this.camera.add(this.handGroup);
     this.setGun(profile.weapon, profile.skin);
@@ -121,7 +130,9 @@ export class ArenaRenderer {
       return t;
     };
     const floorMaterial = new THREE.MeshStandardMaterial({
-      color: this.config.map === "dust" ? "#cfc7b1" : "#cccccc",
+      color: ["dust", "courtyard", "outpost"].includes(this.config.map)
+        ? "#e8d4ab"
+        : "#cccccc",
       map: load("concrete-color.jpg", 25, true),
       normalMap: load("concrete-normal.jpg", 25),
       roughnessMap: load("concrete-rough.jpg", 25),
@@ -175,6 +186,11 @@ export class ArenaRenderer {
       }
       cube(this.scene, b.w, b.h, b.d, b.x, b.h / 2, b.z, mat);
       if (b.kind === "container") {
+        mat.metalness = 0.55;
+        mat.roughness = 0.59;
+        mat.map = load("concrete-color.jpg", 2, true);
+        mat.normalMap = load("concrete-normal.jpg", 2);
+        mat.normalScale = new THREE.Vector2(0.15, 0.15);
         for (let x = -b.w / 2 + 0.2; x < b.w / 2; x += 0.38) {
           cube(
             this.scene,
@@ -326,22 +342,7 @@ export class ArenaRenderer {
     this.handGroup.clear();
     this.gun = makeGun(weapon, skin, knife, this.profile.optic);
     this.handGroup.add(this.gun);
-    const sleeve = material("#596046"),
-      glove = material("#292e25");
-    const limb = (radius, length, x, y, z, mat) => {
-      const m = new THREE.Mesh(
-        new THREE.CapsuleGeometry(radius, length, 5, 16),
-        mat,
-      );
-      m.position.set(x, y, z);
-      m.rotation.x = Math.PI / 2;
-      this.handGroup.add(m);
-      return m;
-    };
-    limb(0.058, 0.25, 0.11, -0.15, 0.25, sleeve).rotation.z = -0.25;
-    limb(0.057, 0.055, 0.035, -0.13, 0.09, glove);
-    limb(0.054, 0.32, -0.11, -0.14, -0.16, sleeve).rotation.y = 0.3;
-    limb(0.055, 0.06, -0.04, -0.09, -0.34, glove);
+    this.handGroup.add(makeHands());
     this.flash = new THREE.PointLight("#ffd477", 0, 5);
     this.flash.position.set(0, 0.02, -0.9);
     this.gun.add(this.flash);
@@ -351,11 +352,15 @@ export class ArenaRenderer {
     const m = createOperator(p.outfit, p.team);
     m.gun = makeGun(
       p.weapon,
-      p.weapon === "knife" ? p.knifeSkin : p.skin,
+      p.weapon === "knife"
+        ? p.knifeSkin
+        : p.weapon === "pistol"
+          ? "standard"
+          : p.skin,
       p.knife,
     );
-    m.gun.scale.setScalar(0.7);
-    m.gun.position.set(0.14, 0.96, -0.34);
+    m.gun.scale.setScalar(WEAPONS[p.weapon].family === "ak" ? 1 : 0.75);
+    m.gun.position.set(0.13, 1.15, -0.23);
     m.g.add(m.gun);
     m.weapon = p.weapon;
     this.scene.add(m.g);
@@ -377,14 +382,23 @@ export class ArenaRenderer {
     }
     const p = state.players.find((p) => p.id === id);
     if (!p) return;
-    this.setGun(p.weapon, p.weapon === "knife" ? p.knifeSkin : p.skin, p.knife);
+    this.setGun(
+      p.weapon,
+      p.weapon === "knife"
+        ? p.knifeSkin
+        : p.weapon === "pistol"
+          ? "standard"
+          : p.skin,
+      p.knife,
+    );
     const smooth = 1 - Math.exp(-22 * dt);
-    const eye = p.y + (p.crouch ? 0.9 : 1.48);
+    const eye = eyeHeight(p);
     const dest = new THREE.Vector3(p.x, eye, p.z);
     if (state.remote && this.camera.position.distanceTo(dest) < 5)
       this.camera.position.lerp(dest, smooth);
     else this.camera.position.copy(dest);
     this.camera.rotation.set(input.pitch, input.yaw, 0, "YXZ");
+    updateGunAnimation(this.gun, this.time);
     this.recoil = Math.max(0, this.recoil - dt * 5);
     this.slash = Math.max(0, this.slash - dt * 4);
     const fov = input.aim
@@ -429,6 +443,8 @@ export class ArenaRenderer {
     for (const [key, m] of this.models)
       if (!ids.has(key)) {
         this.scene.remove(m.g);
+        disposeGroup(m.gun);
+        m.dispose?.();
         this.models.delete(key);
       }
     for (const q of state.players) {
@@ -445,6 +461,8 @@ export class ArenaRenderer {
       else m.g.position.lerp(new THREE.Vector3(q.x, q.y, q.z), smooth);
       m.g.rotation.y = q.yaw;
       m.update(dt, q, this.time);
+      m.gun.position.y = q.crouch ? 0.78 : 1.15;
+      updateGunAnimation(m.gun, this.time);
       m.legs.forEach((l, n) => {
         l.rotation.x = q.moving
           ? Math.sin(this.time * 9 + n * Math.PI) * 0.4
@@ -457,11 +475,15 @@ export class ArenaRenderer {
         disposeGroup(m.gun);
         m.gun = makeGun(
           q.weapon,
-          q.weapon === "knife" ? q.knifeSkin : q.skin,
+          q.weapon === "knife"
+            ? q.knifeSkin
+            : q.weapon === "pistol"
+              ? "standard"
+              : q.skin,
           q.knife,
         );
-        m.gun.scale.setScalar(0.75);
-        m.gun.position.set(0.18, 0.9, -0.37);
+        m.gun.scale.setScalar(WEAPONS[q.weapon].family === "ak" ? 1 : 0.75);
+        m.gun.position.set(0.13, 1.15, -0.23);
         m.g.add(m.gun);
         m.weapon = q.weapon;
       }
@@ -471,6 +493,20 @@ export class ArenaRenderer {
       this.lastEvent = e.id;
       if (state.time - e.time > 0.45) continue;
       onEvent?.(e);
+      if (e.type === "explosion") {
+        const mesh = new THREE.Mesh(
+          new THREE.SphereGeometry(0.45, 12, 8),
+          new THREE.MeshBasicMaterial({
+            color: e.kind === "flash" ? "#f1f7ff" : "#ffb258",
+            transparent: true,
+            opacity: 0.6,
+            depthWrite: false,
+          }),
+        );
+        mesh.position.set(...e.at);
+        this.scene.add(mesh);
+        this.effects.push({ mesh, life: 0.42, maxLife: 0.42, puff: true });
+      }
       if (e.type === "slash" && e.player === id) this.slash = 1;
       if (e.type === "shot") {
         if (e.player === id) {
@@ -503,6 +539,10 @@ export class ArenaRenderer {
     for (let n = this.effects.length - 1; n >= 0; n--) {
       const e = this.effects[n];
       e.life -= dt;
+      if (e.puff) {
+        e.mesh.scale.setScalar(1 + (1 - e.life / e.maxLife) * 8);
+        e.mesh.material.opacity = Math.max(0, e.life / e.maxLife) * 0.55;
+      }
       if (e.life <= 0) {
         this.scene.remove(e.mesh);
         e.mesh.geometry.dispose();
@@ -510,10 +550,42 @@ export class ArenaRenderer {
         this.effects.splice(n, 1);
       }
     }
+    const grenadeIds = new Set((state.grenades || []).map((g) => g.id));
+    for (const [key, mesh] of this.projectiles)
+      if (!grenadeIds.has(key)) {
+        this.scene.remove(mesh);
+        disposeGroup(mesh);
+        this.projectiles.delete(key);
+      }
+    for (const grenade of state.grenades || []) {
+      let mesh = this.projectiles.get(grenade.id);
+      if (!mesh) {
+        mesh = new THREE.Mesh(
+          new THREE.CapsuleGeometry(0.075, 0.08, 4, 12),
+          new THREE.MeshStandardMaterial({
+            color: grenade.kind === "flash" ? "#b2b9bf" : "#475039",
+            metalness: 0.55,
+            roughness: 0.45,
+          }),
+        );
+        mesh.castShadow = true;
+        this.projectiles.set(grenade.id, mesh);
+        this.scene.add(mesh);
+      }
+      mesh.position.set(grenade.x, grenade.y, grenade.z);
+      mesh.rotation.set(this.time * 8, this.time * 4, 0);
+    }
     this.renderer.render(this.scene, this.camera);
   }
   dispose() {
     this.observer.disconnect();
+    // Keep cached character geometry and textures alive for the next match.
+    for (const m of this.models.values()) {
+      this.scene.remove(m.g);
+      disposeGroup(m.gun);
+      m.dispose?.();
+    }
+    this.models.clear();
     this.scene.traverse((o) => {
       o.geometry?.dispose();
       const mats = o.material
@@ -522,7 +594,8 @@ export class ArenaRenderer {
           : [o.material]
         : [];
       mats.forEach((m) => {
-        m.map?.dispose();
+        for (const key of ["map", "normalMap", "roughnessMap"])
+          if (m[key] && !m[key].isCanvasTexture) m[key].dispose();
         m.dispose();
       });
     });

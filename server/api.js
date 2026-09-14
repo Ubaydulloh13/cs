@@ -9,7 +9,10 @@ import {
   OPTICS,
   CROSSHAIRS,
   catalogItem,
+  skinKey,
+  ownsWeaponSkin,
 } from "../src/game/catalog.js";
+import { normalizeInventory } from "../src/game/inventory.js";
 const ready = new WeakMap();
 const json = (data, status = 200, headers = {}) =>
   new Response(JSON.stringify(data), {
@@ -23,14 +26,15 @@ const json = (data, status = 200, headers = {}) =>
 const fail = (message, status = 400) => json({ error: message }, status);
 const fields = {
   weapon: "weaponOwned",
-  skin: "owned",
   knife: "knifeOwned",
-  knifeSkin: "owned",
   outfit: "outfitOwned",
 };
 const publicProfile = (u) => ({
   ...DEFAULT_PROFILE,
-  ...JSON.parse(u.profile),
+  ...normalizeInventory(
+    { ...DEFAULT_PROFILE, ...JSON.parse(u.profile) },
+    u.role === "admin",
+  ),
   id: u.id,
   username: u.username,
   role: u.role,
@@ -216,13 +220,30 @@ export async function handleApi(request, env = {}) {
     }
     const current = publicProfile(u);
     if (path === "profile" && post) {
-      const p = JSON.parse(u.profile);
+      const p = normalizeInventory(
+        { ...DEFAULT_PROFILE, ...JSON.parse(u.profile) },
+        u.role === "admin",
+      );
       for (const [key, owned] of Object.entries(fields)) {
         if (body[key] !== undefined) {
           if (!current[owned].includes(body[key]))
             return fail("Bu buyum hali sizniki emas.", 403);
           p[key] = body[key];
         }
+      }
+      if (body.skin !== undefined) {
+        if (
+          !SKINS.some((s) => s.id === body.skin) ||
+          !ownsWeaponSkin(current, p.weapon, body.skin)
+        )
+          return fail("Bu skin tanlangan qurol uchun olinmagan.", 403);
+        p.weaponSkins[p.weapon] = body.skin;
+      }
+      p.skin = p.weaponSkins[p.weapon] || "standard";
+      if (body.knifeSkin !== undefined) {
+        if (!p.knifeSkinOwned.includes(body.knifeSkin))
+          return fail("Pichoq skini hali sizniki emas.", 403);
+        p.knifeSkin = body.knifeSkin;
       }
       if (typeof body.name === "string")
         p.name = body.name.trim().slice(0, 18) || u.username;
@@ -249,33 +270,53 @@ export async function handleApi(request, env = {}) {
       if (!r.meta.changes)
         return fail("Profil o‘zgardi. Qayta urinib ko‘ring.", 409);
     } else if (path === "purchase" && post) {
-      const item = catalogItem(body.kind, body.id),
-        owned = {
-          weapon: "weaponOwned",
-          skin: "owned",
-          outfit: "outfitOwned",
-          knife: "knifeOwned",
-        }[body.kind];
-      if (!item || !owned) return fail("Buyum topilmadi.");
-      if (!current[owned].includes(item.id)) {
+      const kind = body.kind === "knifeSkin" ? "skin" : body.kind;
+      const item = catalogItem(kind, body.id);
+      const scopedWeapon = body.weapon ?? current.weapon;
+      const skinPurchase = body.kind === "skin";
+      if (skinPurchase && !PRIMARY_WEAPONS.some((w) => w.id === scopedWeapon))
+        return fail("Skin uchun asosiy qurol tanlang.");
+      const owned = {
+        weapon: "weaponOwned",
+        skin: "skinOwned",
+        knifeSkin: "knifeSkinOwned",
+        outfit: "outfitOwned",
+        knife: "knifeOwned",
+      }[body.kind];
+      if (!item || typeof owned !== "string") return fail("Buyum topilmadi.");
+      if (skinPurchase && !current.weaponOwned.includes(scopedWeapon))
+        return fail("Avval ushbu qurolni oling.", 403);
+      const itemId = skinPurchase ? skinKey(scopedWeapon, item.id) : item.id;
+      const alreadyOwned = skinPurchase
+        ? ownsWeaponSkin(current, scopedWeapon, item.id)
+        : current[owned].includes(itemId);
+      if (!alreadyOwned) {
+        const p = normalizeInventory(
+          { ...DEFAULT_PROFILE, ...JSON.parse(u.profile) },
+          u.role === "admin",
+        );
+        p[owned] = [...p[owned], itemId];
         const r = await q(
           db,
-          `UPDATE users SET coins=coins-?,profile=json_insert(profile,'$.${owned}[#]',?),revision=revision+1 WHERE id=? AND coins>=? AND NOT EXISTS (SELECT 1 FROM json_each(profile,'$.${owned}') WHERE value=?)`,
+          "UPDATE users SET coins=coins-?,profile=?,revision=revision+1 WHERE id=? AND coins>=? AND revision=?",
           item.price,
-          item.id,
+          JSON.stringify(p),
           u.id,
           item.price,
-          item.id,
+          u.revision,
         ).run();
         if (!r.meta.changes)
-          return fail("Tangalar yetarli emas yoki buyum olingan.", 409);
+          return fail(
+            "Tangalar yetarli emas yoki profil yangilangan. Qayta urinib ko'ring.",
+            409,
+          );
         await q(
           db,
           "INSERT OR IGNORE INTO purchases (id,user_id,kind,item_id,price,created_at) VALUES (?,?,?,?,?,?)",
           crypto.randomUUID(),
           u.id,
           body.kind,
-          item.id,
+          itemId,
           item.price,
           Date.now(),
         ).run();

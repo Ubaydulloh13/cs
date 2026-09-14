@@ -1,18 +1,16 @@
-import { readFileSync, mkdirSync } from "node:fs";
-import { openDatabase } from "./local-db.js";
+import { mkdirSync } from "node:fs";
+import { resolve } from "node:path";
+import { ensureAdminCredentials } from "../scripts/create-admin.mjs";
 import { handleApi } from "./api.js";
 export function gameApi() {
   return {
     name: "strikezone-accounts",
-    configureServer(server) {
-      mkdirSync(".data", { recursive: true });
-      const DB = openDatabase(".data/accounts.sqlite");
-      let secrets = {};
-      try {
-        secrets = JSON.parse(
-          readFileSync(".private/server-secrets.json", "utf8"),
-        );
-      } catch {}
+    async configureServer(server) {
+      const root = server.config.root;
+      mkdirSync(resolve(root, ".data"), { recursive: true });
+      const { secrets } = await ensureAdminCredentials(root);
+      const { openDatabase } = await import("./local-db.js");
+      const DB = openDatabase(resolve(root, ".data/accounts.sqlite"));
       server.middlewares.use(async (req, res, next) => {
         if (!req.url.startsWith("/api/")) return next();
         try {
@@ -27,7 +25,8 @@ export function gameApi() {
             }
             chunks.push(c);
           }
-          const origin = "http://" + req.headers.host;
+          const origin =
+            (req.socket.encrypted ? "https://" : "http://") + req.headers.host;
           const request = new Request(origin + req.url, {
             method: req.method,
             headers: req.headers,

@@ -57,6 +57,8 @@ export default function Game({ config, profile, network, onExit, onComplete }) {
       crouch: false,
       sprint: false,
       reload: false,
+      grenadeSeq: 0,
+      grenadeKind: "he",
       weapon: profile.weapon,
       slot: 1,
     };
@@ -206,6 +208,10 @@ export default function Game({ config, profile, network, onExit, onComplete }) {
         e.preventDefault();
       keys.add(e.code);
       if (/^Digit[1-3]$/.test(e.code)) input.slot = Number(e.code.slice(-1));
+      if (!e.repeat && ["KeyG", "KeyH"].includes(e.code)) {
+        input.grenadeKind = e.code === "KeyH" ? "flash" : "he";
+        input.grenadeSeq++;
+      }
     }
     function keyup(e) {
       keys.delete(e.code);
@@ -266,6 +272,16 @@ export default function Game({ config, profile, network, onExit, onComplete }) {
       if (e.type === "slash" && e.player === id)
         audio.tone(180, 0.14, 0.17, "sawtooth", 60);
       if (e.type === "reload" && e.player === id) audio.reload();
+      if (e.type === "throw" && e.player === id)
+        audio.tone(160, 0.1, 0.12, "triangle", 80);
+      if (e.type === "explosion")
+        audio.tone(
+          e.kind === "flash" ? 1100 : 70,
+          e.kind === "flash" ? 0.12 : 0.38,
+          0.17,
+          "sawtooth",
+          e.kind === "flash" ? 450 : 22,
+        );
       if (e.type === "hit" && e.player === id) {
         audio.hit();
         setHit(true);
@@ -460,13 +476,21 @@ export default function Game({ config, profile, network, onExit, onComplete }) {
                   key={e.id}
                   className={
                     skinFor(e.skin).broadcast
-                      ? "elimination broadcast-" + skinFor(e.skin).evolution
+                      ? "elimination broadcast-" +
+                        skinFor(e.skin).evolution +
+                        (skinFor(e.skin).broadcastAnimated
+                          ? " animated-broadcast"
+                          : "")
                       : ""
                   }
+                  style={{ "--feed-accent": skinFor(e.skin).accent }}
                 >
                   <b className={e.team === 0 ? "blue" : "orange"}>{e.name}</b>
                   <span>
-                    {e.head ? "◎" : "⌁"} {WEAPONS[e.weapon]?.name}
+                    {e.head ? "◎" : "⌁"}{" "}
+                    {e.weapon === "grenade"
+                      ? "HE GRENADE"
+                      : WEAPONS[e.weapon]?.name}
                   </span>
                   <b>{e.victimName}</b>
                   {skinFor(e.skin).broadcast && (
@@ -544,6 +568,14 @@ export default function Game({ config, profile, network, onExit, onComplete }) {
               </small>
             </div>
             <div className="ammo">
+              <div className="grenade-inventory">
+                <span>
+                  <kbd>G</kbd> HE {me.grenadeAmmo?.he || 0}
+                </span>
+                <span>
+                  <kbd>H</kbd> FLASH {me.grenadeAmmo?.flash || 0}
+                </span>
+              </div>
               <span>
                 {WEAPONS[me.weapon].name}{" "}
                 <b>{me.reloading > 0 ? "O‘QLANMOQDA…" : ""}</b>
@@ -557,6 +589,14 @@ export default function Game({ config, profile, network, onExit, onComplete }) {
         </div>
       )}
       {hurt && <div className="damage-overlay" />}
+      {hud && me?.health > 0 && me.flashUntil > hud.time && (
+        <div
+          className="flash-overlay"
+          style={{ opacity: Math.min(0.98, (me.flashUntil - hud.time) / 1.1) }}
+        >
+          <span>FLASHBANG</span>
+        </div>
+      )}
       {touch && !paused && !over && !error && (
         <div className="touch-controls">
           <div
@@ -606,6 +646,26 @@ export default function Game({ config, profile, network, onExit, onComplete }) {
                 {["Qurol", "Pistol", "Pichoq"][slot - 1]}
               </button>
             ))}
+            <button
+              onClick={() => {
+                if (control.current) {
+                  control.current.input.grenadeKind = "he";
+                  control.current.input.grenadeSeq++;
+                }
+              }}
+            >
+              HE
+            </button>
+            <button
+              onClick={() => {
+                if (control.current) {
+                  control.current.input.grenadeKind = "flash";
+                  control.current.input.grenadeSeq++;
+                }
+              }}
+            >
+              FLASH
+            </button>
           </div>
           <div className="touch-actions">
             {[
