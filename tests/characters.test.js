@@ -3,14 +3,14 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import { buildOperator } from "../src/game/characters.js";
+import { buildOperator, createFirstPersonArms } from "../src/game/characters.js";
 
 // Exercise the actual shipped skeleton and animations without a WebGL context.
 // Only image materials are removed; skin weights, nodes and clips are unchanged.
 globalThis.ProgressEvent ??= class {
   constructor(type, data) { Object.assign(this, { type }, data); }
 };
-const bytes = await readFile(new URL("../public/models/soldier.glb", import.meta.url));
+const bytes = await readFile(new URL("../public/models/operator.glb", import.meta.url));
 const jsonLength = bytes.readUInt32LE(12);
 const gltf = JSON.parse(bytes.subarray(20, 20 + jsonLength));
 const binaryStart = 20 + jsonLength;
@@ -22,6 +22,12 @@ delete gltf.images;
 delete gltf.textures;
 delete gltf.samplers;
 const asset = await new GLTFLoader().parseAsync(JSON.stringify(gltf), "");
+test('first person uses visible textured arm geometry without mutating full character mesh',()=>{
+ const before=asset.scene.children.length;const arms=createFirstPersonArms('vanguard',asset);let vertices=0;
+ arms.g.traverse(o=>{if(o.isSkinnedMesh&&o.visible)vertices+=o.geometry.index.count;});
+ assert.ok(vertices>1000,'arm selection must include actual hand and sleeve triangles');
+ arms.update(.016,'knife','karambit');arms.dispose();assert.equal(asset.scene.children.length,before);
+});
 function bounds(actor) {
   actor.g.updateMatrixWorld(true);
   actor.model.traverse((o) => o.skeleton?.update());

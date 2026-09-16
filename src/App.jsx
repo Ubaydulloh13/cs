@@ -123,7 +123,7 @@ function AppShell() {
       new URLSearchParams(location.search).has("room") ? "friends" : "play",
     ),
     [size, setSize] = useState(5),
-    [map, setMap] = useState("dust"),
+    [map, setMap] = useState("arena"),
     [mode, setMode] = useState("team"),
     [difficulty, setDifficulty] = useState("normal"),
     [duration, setDuration] = useState(180),
@@ -870,13 +870,15 @@ function AppShell() {
                 {CROSSHAIRS.map((shape, i) => (
                   <button
                     key={shape}
-                    aria-label={["Xoch", "Nuqta", "Aylana", "T shakli"][i]}
+                    aria-label={
+                      ["Xoch", "Nuqta", "Aylana", "T shakli", "Pritselsiz"][i]
+                    }
                     className={profile.crosshair === shape ? "selected" : ""}
                     onClick={() =>
                       setProfile((p) => ({ ...p, crosshair: shape }))
                     }
                   >
-                    {["+", "•", "⊙", "┬"][i]}
+                    {["+", "•", "⊙", "┬", "OFF"][i]}
                   </button>
                 ))}
               </div>
@@ -952,7 +954,7 @@ function AppShell() {
               <span className="season-tag">02-MAVSUM // EVOLUTION</span>
               <h3>Maydon sizniki.</h3>
               <p>
-                Oltita arena, 24 asosiy qurol, 30 skin, pichoqlar va 1v1 dan 6v6
+                Yettita arena, 24 asosiy qurol, 30 skin, pichoqlar va 1v1 dan 6v6
                 gacha janglar. Botlar bilan mashq qiling yoki do‘stlaringizni
                 xonaga chaqiring.
               </p>

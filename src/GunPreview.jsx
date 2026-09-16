@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { loadWeaponAssets } from "./game/weapon-assets.js";
 import { makeGun, disposeGroup, updateGunAnimation } from "./game/models.js";
 import { SKINS } from "./game/config.js";
@@ -129,9 +130,14 @@ export default function GunPreview({
     el.appendChild(renderer.domElement);
     const scene = new THREE.Scene(),
       camera = new THREE.PerspectiveCamera(37, 1, 0.1, 20);
-    camera.position.set(1.6, 0.7, 2.5);
-    camera.lookAt(0, 0, -0.14);
-    scene.add(new THREE.HemisphereLight("#efffe0", "#333e2b", 3));
+    const pmrem = new THREE.PMREMGenerator(renderer),
+      room = new RoomEnvironment();
+    const environment = pmrem.fromScene(room, 0.04);
+    scene.environment = environment.texture;
+    scene.environmentIntensity = 0.65;
+    pmrem.dispose();
+    room.dispose();
+    scene.add(new THREE.HemisphereLight("#eaf1fa", "#555663", 2));
     const sun = new THREE.DirectionalLight("#f2ffe4", 5);
     sun.position.set(3, 4, 2);
     scene.add(sun);
@@ -149,14 +155,29 @@ export default function GunPreview({
         scene.remove(old);
         disposeGroup(old);
         scene.add(gun);
+        fit();
       })
       .catch(() => {});
-    gun.rotation.set(0.06, -0.5, -0.1);
+    gun.rotation.set(0.04, Math.PI / 2 + 0.17, -0.035);
     scene.add(gun);
+    const fit = () => {
+      const bounds = new THREE.Box3().setFromObject(gun),
+        size = bounds.getSize(new THREE.Vector3()),
+        center = bounds.getCenter(new THREE.Vector3());
+      const distance =
+        (1.3 * Math.max(size.y, size.x / camera.aspect)) /
+          (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2))) +
+        size.z * 0.5;
+      camera.position
+        .copy(center)
+        .add(new THREE.Vector3(0, 0.045, Math.max(0.45, distance)));
+      camera.lookAt(center);
+    };
     const resize = () => {
       renderer.setSize(el.clientWidth, el.clientHeight);
       camera.aspect = el.clientWidth / el.clientHeight;
       camera.updateProjectionMatrix();
+      fit();
     };
     resize();
     const observer = new ResizeObserver(resize);
@@ -182,7 +203,7 @@ export default function GunPreview({
     el.addEventListener("pointercancel", up);
     const animate = (now = performance.now()) => {
       frame = requestAnimationFrame(animate);
-      if (lastX === null) gun.rotation.y += 0.002;
+      if (lastX === null) gun.rotation.y += 0.00025;
       updateGunAnimation(gun, now / 1000);
       renderer.render(scene, camera);
     };
@@ -200,6 +221,7 @@ export default function GunPreview({
         o.material?.dispose();
       });
       renderer.dispose();
+      environment.dispose();
       renderer.domElement.remove();
     };
   }, [weapon, skin, knife, optic]);

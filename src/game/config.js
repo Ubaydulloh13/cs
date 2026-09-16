@@ -1,4 +1,5 @@
 import { WEAPONS, SKINS } from "./catalog.js";
+import { ARENA_MAP } from "./arena-map.js";
 export {
   WEAPONS,
   SKINS,
@@ -26,6 +27,7 @@ const perimeter = [
   box(0, 23, 51, 1, 6, "#8b8876"),
 ];
 export const MAPS = {
+  arena: ARENA_MAP,
   courtyard: {
     name: "Old Quarter",
     subtitle: "Toshli shahar hovlisi",
@@ -185,6 +187,10 @@ export const CONTROLS = [
   ["R", "Qayta o‘qlash"],
   ["1 / 2 / 3", "Asosiy qurol / Pistol / Pichoq"],
   ["G / H", "Granata / Flashbang"],
+  ["B", "Birinchi / uchinchi shaxs kamerasi"],
+  ["1 qayta bosish", "Qurolni orqaga osish / olish"],
+  ["ALT + sichqoncha", "Atrofga erkin qarash"],
+  ["V", "Qurolni ko‘rish"],
   ["TAB", "Jang natijalari"],
   ["ESC", "Tanaffus / kursor"],
 ];

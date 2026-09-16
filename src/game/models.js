@@ -2,7 +2,8 @@ import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { WEAPONS, skinFor } from "./catalog.js";
-import { detailedAK } from "./weapon-assets.js";
+import { detailedAK, detailedM4, getM4Textures } from "./weapon-assets.js";
+import { addWeaponBody, addOptic, geometryTools } from "./weapon-geometry.js";
 const textures = new Map();
 function finish(s, weapon) {
   if (typeof document === "undefined") return null;
@@ -194,77 +195,105 @@ export function makeGun(
     geom.rotateY(Math.PI / 2);
     return add(geom, mat, x - depth / 2, y, z);
   };
-  const imported = w.family === "ak" ? detailedAK() : null;
-  if (imported) {
-    add(imported, paint, 0, 0, 0);
-    // Retain the artist's actual receiver, curved magazine, stock and iron sights.
-    if (w.id === "asval") tube(0.031, 0.28, 0, -0.001, -0.48, steel);
-    if (w.id === "ak12" || w.id === "an94")
-      for (let n = 0; n < 9; n++)
-        box(0.084, 0.009, 0.018, 0, 0.047, -0.25 + n * 0.033, steel);
-    if (optic === "holo" || optic === "red-dot") {
-      box(0.07, 0.018, 0.1, 0, 0.054, 0.03, steel);
-      box(0.013, 0.057, 0.025, -0.034, 0.089, 0.03, steel);
-      box(0.013, 0.057, 0.025, 0.034, 0.089, 0.03, steel);
-      box(0.08, 0.012, 0.025, 0, 0.117, 0.03, steel);
-    } else {
-      tube(0.039, 0.18, 0, 0.11, -0.02, steel);
-      tube(0.05, 0.05, 0, 0.11, -0.12, steel);
+  const palette = { paint, steel, rubber, accent };
+  const imported = w.id === "ak" ? detailedAK() : null;
+  const m4 = ["m4", "hk416"].includes(w.id) ? detailedM4() : null;
+  if (m4) {
+    const maps = getM4Textures();
+    const original = new THREE.MeshStandardMaterial({
+      ...maps,
+      metalness: 0.56,
+      roughness: 0.7,
+      normalScale: new THREE.Vector2(0.55, 0.55),
+    });
+    for (const part of m4) {
+      const painted =
+        s.id !== "standard" &&
+        ["Base", "Stock", "Magazine", "Barrel"].includes(part.name);
+      const mesh = add(part.geometry, painted ? paint : original, 0, 0, 0);
+      if (w.id === "hk416" && part.name === "Barrel") mesh.scale.z = 0.91;
     }
+    if (w.id === "hk416")
+      for (let n = 0; n < 9; n++)
+        box(0.074, 0.006, 0.012, 0, 0.067, -0.17 - n * 0.025, steel);
+    addOptic(g, optic, palette, 0.005);
+  } else if (imported) {
+    add(imported, paint, 0, 0, 0);
+    addOptic(g, optic, palette, -0.025);
   } else if (w.family === "knife") {
+    const { plate, curve } = geometryTools(g, palette);
     const curved = ["karambit", "talon"].includes(knifeId);
-    const grip = box(0.07, 0.075, 0.25, 0, 0, 0.13, rubber);
-    grip.rotation.x = -0.14;
-    for (let n = 0; n < 5; n++)
-      tube(0.044, 0.012, 0, -0.008, 0.03 + n * 0.043, steel);
+    // Knives are palm sized: a 12 cm grip, slender bevel and an index-finger ring.
+    plate(
+      [
+        [-0.067, 0.018],
+        [0.045, 0.02],
+        [0.06, 0.006],
+        [0.043, -0.025],
+        [-0.063, -0.026],
+      ],
+      0.024,
+      0,
+      -0.01,
+      0,
+      rubber,
+    );
+    for (let n = 0; n < 4; n++)
+      box(0.027, 0.005, 0.006, 0, 0.012, -0.025 + n * 0.023, accent);
     if (curved) {
       const ring = add(
-        new THREE.TorusGeometry(0.067, 0.016, 12, 32),
-        accent,
+        new THREE.TorusGeometry(0.021, 0.0045, 12, 36),
+        steel,
         0,
-        0.012,
-        0.32,
+        0.0,
+        0.088,
       );
       ring.rotation.y = Math.PI / 2;
-      profile(
+      const shape = new THREE.Shape();
+      shape.moveTo(0.046, 0.014);
+      shape.bezierCurveTo(0.13, 0.045, 0.18, -0.018, 0.17, -0.098);
+      shape.bezierCurveTo(0.16, -0.056, 0.125, -0.048, 0.104, -0.048);
+      shape.bezierCurveTo(0.07, -0.043, 0.064, -0.023, 0.046, -0.017);
+      const blade = new THREE.ExtrudeGeometry(shape, {
+        depth: 0.006,
+        bevelEnabled: true,
+        bevelSize: 0.002,
+        bevelThickness: 0.001,
+        bevelSegments: 3,
+        curveSegments: 32,
+      });
+      blade.rotateY(Math.PI / 2);
+      add(blade, paint, -0.003, -0.008, 0);
+      curve(
         [
-          [0, 0],
-          [0.09, 0.06],
-          [0.22, 0.01],
-          [0.31, -0.1],
-          [0.32, -0.23],
-          [0.27, -0.34],
-          [0.25, -0.15],
-          [0.17, -0.07],
-          [0.04, -0.07],
+          [0, 0.016, -0.05],
+          [0, 0.025, -0.092],
+          [0, 0.005, -0.137],
+          [0, -0.023, -0.158],
         ],
-        0.018,
-        0,
-        0,
-        0,
-        paint,
+        0.0015,
+        steel,
       );
     } else {
-      const kukri = knifeId === "kukri";
-      profile(
+      const length = knifeId === "kukri" ? 0.23 : knifeId === "m9" ? 0.2 : 0.16;
+      plate(
         [
-          [0, 0.035],
-          [0.32, kukri ? 0.09 : 0.035],
-          [0.48, kukri ? 0.03 : 0],
-          [0.35, -0.055],
-          [0.12, kukri ? -0.09 : -0.025],
-          [0, -0.025],
+          [0.045, 0.021],
+          [length * 0.8, knifeId === "kukri" ? 0.035 : 0.019],
+          [length, 0],
+          [length * 0.75, -0.02],
+          [0.05, -0.021],
         ],
-        0.018,
+        0.005,
         0,
-        0,
+        -0.005,
         0,
         paint,
       );
-      box(0.13, 0.035, 0.025, 0, 0, -0.005, steel);
+      box(0.06, 0.006, 0.012, 0, -0.005, -0.041, steel);
       if (knifeId === "butterfly") {
-        const h = box(0.045, 0.055, 0.28, 0.08, 0, 0.05, accent);
-        h.rotation.x = 1.2;
+        const h = box(0.014, 0.027, 0.12, 0.025, -0.006, 0.027, accent);
+        h.rotation.x = 0.18;
       }
     }
   } else if (w.family === "pistol") {
@@ -283,142 +312,30 @@ export function makeGun(
     );
     guard.rotation.y = Math.PI / 2;
   } else {
-    const bull = w.family === "bullpup",
-      ak = w.family === "ak",
-      scar = w.family === "scar",
-      sniper = w.family === "sniper",
-      smg = w.family === "smg",
-      lmg = w.family === "lmg";
-    const length = sniper ? 0.85 : smg ? 0.47 : 0.66;
-    profile(
-      [
-        [-0.21, 0.045],
-        [0.28, 0.045],
-        [0.32, -0.02],
-        [0.22, -0.08],
-        [-0.18, -0.065],
-      ],
-      0.085,
-      0,
-      0,
-      0.06,
+    addWeaponBody(g, w.id, palette);
+    addOptic(
+      g,
+      optic,
+      palette,
+      ["famas", "g36", "p90"].includes(w.id) ? 0.07 : 0,
     );
-    box(0.095, 0.095, length * 0.5, 0, 0.014, -0.29);
-    tube(0.019, length * 0.57, 0, 0.01, -length * 0.7);
-    tube(0.029, 0.085, 0, 0.01, -length * 0.99);
-    const grip = box(0.07, 0.17, 0.095, 0, -0.145, bull ? -0.11 : 0.07, rubber);
-    grip.rotation.x = -0.23;
-    profile(
-      [
-        [-0.16, 0.055],
-        [0.07, 0.055],
-        [0.16, -0.04],
-        [0.14, -0.12],
-        [-0.14, -0.105],
-      ],
-      0.07,
-      0,
-      -0.01,
-      0.47,
-      bull ? paint : rubber,
-    );
-    tube(0.025, 0.16, 0, 0, 0.29);
-    box(0.09, 0.17, 0.03, 0, -0.04, 0.64, rubber);
-    if (lmg) box(0.18, 0.22, 0.19, 0, -0.17, -0.08, paint);
-    else if (ak) {
-      profile(
-        [
-          [0, 0],
-          [0.085, 0],
-          [0.08, -0.13],
-          [0.05, -0.23],
-          [-0.01, -0.28],
-          [-0.055, -0.255],
-          [-0.02, -0.14],
-        ],
-        0.06,
-        0,
-        -0.05,
-        -0.13,
-        paint,
-      );
-    } else {
-      const mag = box(
-        0.066,
-        smg ? 0.2 : 0.21,
-        0.1,
-        0,
-        -0.16,
-        bull ? 0.23 : -0.12,
-        paint,
-      );
-      mag.rotation.x = scar ? -0.1 : 0.08;
-    }
-    for (let n = 0; n < 8; n++) {
-      box(0.105, 0.014, 0.022, 0, 0.074, -0.43 + n * 0.045, steel);
-      box(0.004, 0.027, 0.022, 0.049, 0.018, -0.44 + n * 0.033, rubber);
-    }
-    for (let side of [-1, 1]) {
-      for (let n = 0; n < 3; n++) {
-        const screw = add(
-          new THREE.CylinderGeometry(0.008, 0.008, 0.006, 12),
-          steel,
-          side * 0.05,
-          -0.014,
-          0.02 - n * 0.075,
-        );
-        screw.rotation.z = Math.PI / 2;
-      }
-    }
-    const guard = add(
-      new THREE.TorusGeometry(0.054, 0.008, 8, 24),
-      steel,
-      0,
-      -0.086,
-      0.013,
-    );
-    guard.rotation.y = Math.PI / 2;
-    box(0.11, 0.013, 0.022, 0.015, 0.008, 0.035, accent);
-    tube(0.01, 0.07, 0.055, -0.01, -0.03);
-    if (sniper || optic === "acog" || optic === "scope") {
-      tube(0.043, sniper ? 0.3 : 0.19, 0, 0.155, -0.07);
-      tube(0.058, 0.06, 0, 0.155, -0.22);
-      tube(0.05, 0.036, 0, 0.155, 0.08);
-      box(0.04, 0.07, 0.05, 0, 0.098, -0.05, steel);
-      const glass = new THREE.MeshStandardMaterial({
-        color: "#4da6a4",
-        metalness: 0.45,
-        roughness: 0.06,
-      });
-      tube(0.043, 0.004, 0, 0.155, 0.102, glass);
-    } else {
-      box(0.07, 0.025, 0.11, 0, 0.091, -0.04, steel);
-      box(0.015, 0.07, 0.075, -0.038, 0.135, -0.04, steel);
-      box(0.015, 0.07, 0.075, 0.038, 0.135, -0.04, steel);
-      box(0.087, 0.015, 0.075, 0, 0.17, -0.04, steel);
-    }
-    if (lmg)
-      for (const side of [-1, 1]) {
-        const leg = tube(0.012, 0.28, side * 0.08, -0.13, -0.52);
-        leg.rotation.set(0.35, 0, side * 0.3);
-      }
   }
   if (s.evolution) {
-    for (let n = 0; n < 7; n++) {
+    for (let n = 0; n < 5; n++) {
       const geo =
         s.evolution === "ice"
           ? new THREE.ConeGeometry(
-              0.025 + (n % 3) * 0.01,
-              0.11 + (n % 2) * 0.05,
+              0.009 + (n % 3) * 0.003,
+              0.023 + (n % 2) * 0.008,
               5,
             )
-          : new THREE.ConeGeometry(0.03, 0.095, 8);
+          : new THREE.ConeGeometry(0.009, 0.026, 12);
       const crystal = add(
         geo,
         accent,
         (n % 2 ? 1 : -1) * 0.057,
-        0.065,
-        -0.37 + n * 0.065,
+        -0.018,
+        -0.29 + n * 0.047,
       );
       crystal.rotation.z = (n % 2 ? 1 : -1) * 0.6;
       if (w.family === "knife") crystal.scale.setScalar(0.55);

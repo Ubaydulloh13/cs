@@ -1,9 +1,12 @@
 import { eyeHeight } from "./dimensions.js";
+import { orbitCamera, weaponPresentation } from "./presentation.js";
 import * as THREE from "three";
-import { createOperator } from "./characters.js";
+import { createOperator, createFirstPersonArms } from "./characters.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { MAPS, WEAPONS, OPTICS } from "./config.js";
-import { addScenery, makeHands } from "./scenery.js";
+import { addScenery } from "./scenery.js";
+import { buildEnvironment } from "./environment.js";
+import { buildArena } from "./arena-environment.js";
 import {
   makeGun,
   mergeStatic,
@@ -61,7 +64,7 @@ export class ArenaRenderer {
     this.renderer.shadowMap.enabled = profile.quality !== "low";
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.1;
+    this.renderer.toneMappingExposure = 1;
     this.canvas = this.renderer.domElement;
     this.canvas.tabIndex = 0;
     this.canvas.setAttribute("aria-label", "STRIKEZONE 3D jang maydoni");
@@ -76,7 +79,7 @@ export class ArenaRenderer {
     pmrem.dispose();
     const map = MAPS[config.map];
     this.scene.background = new THREE.Color(map.sky);
-    this.scene.fog = new THREE.Fog(map.fog, 30, 95);
+    this.scene.fog = new THREE.Fog("#cbd3d6", 65, 160);
     this.camera = new THREE.PerspectiveCamera(78, 1, 0.06, 150);
     this.camera.rotation.order = "YXZ";
     this.scene.add(this.camera);
@@ -90,9 +93,9 @@ export class ArenaRenderer {
     this.slash = 0;
     this.currentGun = "";
     this.lastSpawn = 0;
-    this.scene.add(new THREE.HemisphereLight("#b9defa", "#b89c6e", 2));
-    const sun = new THREE.DirectionalLight("#fff1cf", 3);
-    sun.position.set(-24, 38, 19);
+    this.scene.add(new THREE.HemisphereLight("#ccddec", "#b2a58f", 0.75));
+    const sun = new THREE.DirectionalLight("#fff2da", 3.1);
+    sun.position.set(-22, 36, 14);
     sun.castShadow = true;
     sun.shadow.mapSize.set(2048, 2048);
     sun.shadow.camera.left = -40;
@@ -100,13 +103,27 @@ export class ArenaRenderer {
     sun.shadow.camera.top = 35;
     sun.shadow.camera.bottom = -35;
     sun.shadow.normalBias = 0.025;
+    sun.shadow.bias = -0.00008;
+    sun.shadow.camera.near = 0.5;
+    sun.shadow.camera.far = 120;
+    sun.shadow.mapSize.set(
+      profile.quality === "low" ? 1024 : 2048,
+      profile.quality === "low" ? 1024 : 2048,
+    );
     this.scene.add(sun);
-    this.createMap(map);
-    mergeStatic(this.scene);
-    addScenery(this.scene, config.map);
+    if (config.map === "arena") {
+      this.world = buildArena(this.scene, this.renderer, map);
+    } else if (["dust", "courtyard", "outpost"].includes(config.map)) {
+      this.world = buildEnvironment(this.scene, this.renderer, map, config.map);
+    } else {
+      this.createMap(map);
+      mergeStatic(this.scene);
+      addScenery(this.scene, config.map);
+    }
     this.projectiles = new Map();
     this.handGroup = new THREE.Group();
     this.camera.add(this.handGroup);
+    this.arms = createFirstPersonArms(profile.outfit);
     this.setGun(profile.weapon, profile.skin);
     this.resize = () => {
       const w = container.clientWidth,
@@ -338,11 +355,18 @@ export class ArenaRenderer {
   }
   setGun(weapon, skin, knife = "combat") {
     if (this.currentGun === weapon + skin + knife) return;
+    this.handGroup.remove(this.arms.g);
     this.handGroup.children.forEach(disposeGroup);
     this.handGroup.clear();
     this.gun = makeGun(weapon, skin, knife, this.profile.optic);
     this.handGroup.add(this.gun);
-    this.handGroup.add(makeHands());
+    this.handGroup.add(this.arms.g);
+    if (weapon === "knife") {
+      this.gun.position.set(0.1, -0.07, 0.06);
+      this.gun.rotation.set(0.18, 0.4, -0.42);
+      if (["karambit", "talon"].includes(knife))
+        this.gun.rotation.set(0.3, -0.25, 1.1);
+    }
     this.flash = new THREE.PointLight("#ffd477", 0, 5);
     this.flash.position.set(0, 0.02, -0.9);
     this.gun.add(this.flash);
@@ -359,9 +383,14 @@ export class ArenaRenderer {
           : p.skin,
       p.knife,
     );
-    m.gun.scale.setScalar(WEAPONS[p.weapon].family === "ak" ? 1 : 0.75);
+    m.gun.scale.setScalar(1);
     m.gun.position.set(0.13, 1.15, -0.23);
     m.g.add(m.gun);
+    m.backGun = makeGun(p.primary || p.weapon, p.skin, "combat", "none");
+    m.backGun.position.set(-0.12, 1.02, 0.16);
+    m.backGun.rotation.set(Math.PI / 2, 0, -0.55);
+    m.backGun.visible = false;
+    m.g.add(m.backGun);
     m.weapon = p.weapon;
     this.scene.add(m.g);
     return m;
@@ -398,45 +427,76 @@ export class ArenaRenderer {
       this.camera.position.lerp(dest, smooth);
     else this.camera.position.copy(dest);
     this.camera.rotation.set(input.pitch, input.yaw, 0, "YXZ");
+    const scoped =
+      input.aim &&
+      (WEAPONS[p.weapon].family === "sniper" ||
+        ["acog", "scope"].includes(this.profile.optic)) &&
+      this.profile.optic !== "none";
+    const orbit = input.cameraMode === "orbit" && !scoped;
+    if (orbit) {
+      const pose = orbitCamera(p, input, MAPS[this.config.map].boxes);
+      this.camera.position.fromArray(pose.position);
+      this.camera.lookAt(...pose.target);
+    }
     updateGunAnimation(this.gun, this.time);
+    if (!orbit) this.arms.update(dt, p.weapon, p.knife);
     this.recoil = Math.max(0, this.recoil - dt * 5);
     this.slash = Math.max(0, this.slash - dt * 4);
-    const fov = input.aim
-      ? WEAPONS[p.weapon].family === "sniper"
-        ? 27
-        : OPTICS.find((o) => o.id === this.profile.optic)?.zoom || 56
-      : input.sprint && p.moving
-        ? 84
-        : 78;
+    const fov = orbit
+      ? input.aim
+        ? 60
+        : 72
+      : input.aim
+        ? WEAPONS[p.weapon].family === "sniper"
+          ? 27
+          : OPTICS.find((o) => o.id === this.profile.optic)?.zoom || 56
+        : input.sprint && p.moving
+          ? 84
+          : 78;
     this.camera.fov = THREE.MathUtils.lerp(this.camera.fov, fov, smooth);
     this.camera.updateProjectionMatrix();
     const bob = p.moving
       ? Math.sin(this.time * (input.sprint ? 15 : 10)) * 0.013
       : Math.sin(this.time * 2) * 0.002;
-    const aim = input.aim ? 1 : 0;
+    const aim = input.aim && !p.holstered ? 1 : 0;
+    const presentation = weaponPresentation(p, state.time);
     this.handGroup.position.lerp(
       new THREE.Vector3(
-        0.24 * (1 - aim),
-        -0.23 - aim * 0.017 + bob,
-        -0.4 + this.recoil * 0.055,
+        0.24 * (1 - aim) - presentation.inspect * 0.1,
+        -0.23 -
+          aim * 0.017 +
+          bob -
+          presentation.stow * 0.72 +
+          presentation.inspect * 0.09,
+        -0.4 +
+          this.recoil * 0.055 +
+          presentation.stow * 0.25 -
+          presentation.inspect * 0.13,
       ),
       smooth,
     );
     this.handGroup.rotation.set(
       p.reloading > 0
         ? -0.5 + Math.sin(p.reloading * 4) * 0.17
-        : -Math.sin(this.slash * Math.PI) * 0.8,
-      0,
+        : -Math.sin(this.slash * Math.PI) * 0.8 +
+            presentation.stow * 0.75 +
+            presentation.inspect * 0.14,
+      presentation.inspect * presentation.turn,
       p.reloading > 0
         ? -0.38
-        : bob * 0.3 + Math.sin(this.slash * Math.PI) * 1.2,
+        : bob * 0.3 +
+            Math.sin(this.slash * Math.PI) * 1.2 +
+            presentation.inspect * 0.53,
     );
     this.handGroup.visible =
       p.health > 0 &&
+      presentation.visible &&
+      !orbit &&
       !(
         input.aim &&
         (WEAPONS[p.weapon].family === "sniper" ||
-          ["acog", "scope"].includes(this.profile.optic))
+          ["acog", "scope"].includes(this.profile.optic)) &&
+        this.profile.optic !== "none"
       );
     this.flash.intensity = Math.max(0, this.flash.intensity - dt * 180);
     const ids = new Set(state.players.map((p) => p.id));
@@ -444,11 +504,16 @@ export class ArenaRenderer {
       if (!ids.has(key)) {
         this.scene.remove(m.g);
         disposeGroup(m.gun);
+        disposeGroup(m.backGun);
         m.dispose?.();
         this.models.delete(key);
       }
     for (const q of state.players) {
-      if (q.id === id) continue;
+      if (q.id === id && !orbit) {
+        const own = this.models.get(id);
+        if (own) own.g.visible = false;
+        continue;
+      }
       let m = this.models.get(q.id);
       if (!m) {
         m = this.makePlayer(q);
@@ -468,7 +533,7 @@ export class ArenaRenderer {
           ? Math.sin(this.time * 9 + n * Math.PI) * 0.4
           : 0;
       });
-      m.marker.visible = q.team === p.team;
+      m.marker.visible = q.team === p.team && q.id !== id;
       m.marker.rotation.y = this.time;
       if (m.weapon !== q.weapon) {
         m.g.remove(m.gun);
@@ -482,11 +547,24 @@ export class ArenaRenderer {
               : q.skin,
           q.knife,
         );
-        m.gun.scale.setScalar(WEAPONS[q.weapon].family === "ak" ? 1 : 0.75);
+        m.gun.scale.setScalar(1);
         m.gun.position.set(0.13, 1.15, -0.23);
         m.g.add(m.gun);
         m.weapon = q.weapon;
       }
+      const held = weaponPresentation(q, state.time);
+      const back = q.holstered ? held.stow : 0;
+      m.gun.position.set(
+        0.13 - back * 0.25,
+        (q.crouch ? 0.78 : 1.15) - back * 0.13,
+        -0.23 + back * 0.39,
+      );
+      m.gun.rotation.set(
+        (back * Math.PI) / 2,
+        held.inspect * held.turn,
+        back * -0.55 + held.inspect * 0.35,
+      );
+      m.backGun.visible = q.weapon !== q.primary;
     }
     for (const e of state.events || []) {
       if (e.id <= this.lastEvent) continue;
@@ -578,11 +656,15 @@ export class ArenaRenderer {
     this.renderer.render(this.scene, this.camera);
   }
   dispose() {
+    this.world?.dispose();
     this.observer.disconnect();
+    this.handGroup.remove(this.arms.g);
+    this.arms.dispose();
     // Keep cached character geometry and textures alive for the next match.
     for (const m of this.models.values()) {
       this.scene.remove(m.g);
       disposeGroup(m.gun);
+      disposeGroup(m.backGun);
       m.dispose?.();
     }
     this.models.clear();

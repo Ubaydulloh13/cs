@@ -394,12 +394,13 @@ export const OUTFITS = [
   },
 ];
 export const OPTICS = [
+  { id: "none", name: "Optikasiz · temir nishon", zoom: 65 },
   { id: "red-dot", name: "Red Dot", zoom: 56 },
   { id: "holo", name: "Holografik", zoom: 51 },
   { id: "acog", name: "ACOG 4×", zoom: 33 },
   { id: "scope", name: "Optika 6×", zoom: 24 },
 ];
-export const CROSSHAIRS = ["cross", "dot", "circle", "t"];
+export const CROSSHAIRS = ["cross", "dot", "circle", "t", "none"];
 export const COIN_PACKS = [
   { coins: 500, price: 15000 },
   { coins: 1500, price: 39000 },

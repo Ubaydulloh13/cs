@@ -6,10 +6,16 @@ export function sanitizeInput(i = {}) {
   if (!i || typeof i !== "object") i = {};
   return {
     slot: [1, 2, 3].includes(i.slot) ? i.slot : null,
+    slotSeq: clamp(Math.floor(finite(i.slotSeq)), 0, 2147483647),
+    inspectSeq: clamp(Math.floor(finite(i.inspectSeq)), 0, 2147483647),
     mx: clamp(finite(i.mx), -1, 1),
     mz: clamp(finite(i.mz), -1, 1),
     yaw: finite(i.yaw),
     pitch: clamp(finite(i.pitch), -1.45, 1.45),
+    shotYaw: Number.isFinite(i.shotYaw) ? i.shotYaw : null,
+    shotPitch: Number.isFinite(i.shotPitch)
+      ? clamp(i.shotPitch, -1.45, 1.45)
+      : null,
     jump: !!i.jump,
     crouch: !!i.crouch,
     sprint: !!i.sprint,
@@ -38,10 +44,11 @@ export function rayBox(origin, dir, min, max) {
   }
   return lo;
 }
-export function blocked(x, z, boxes, r = 0.36, y = 0) {
+export function blocked(x, z, boxes, r = 0.36, y = 0, height = PLAYER_HEIGHT) {
   return boxes.some(
     (b) =>
-      y < b.h &&
+      y < (b.y || 0) + b.h - 0.001 &&
+      y + height > (b.y || 0) + 0.001 &&
       x + r > b.x - b.w / 2 &&
       x - r < b.x + b.w / 2 &&
       z + r > b.z - b.d / 2 &&
@@ -56,8 +63,8 @@ export function wallDistance(origin, dir, boxes) {
       rayBox(
         origin,
         dir,
-        [b.x - b.w / 2, 0, b.z - b.d / 2],
-        [b.x + b.w / 2, b.h, b.z + b.d / 2],
+        [b.x - b.w / 2, b.y || 0, b.z - b.d / 2],
+        [b.x + b.w / 2, (b.y || 0) + b.h, b.z + b.d / 2],
       ),
     );
   return best;
@@ -65,6 +72,8 @@ export function wallDistance(origin, dir, boxes) {
 export function movePlayer(p, i, dt, boxes, players = []) {
   p.yaw = i.yaw;
   p.pitch = i.pitch;
+  p.shotYaw = i.shotYaw;
+  p.shotPitch = i.shotPitch;
   p.crouch = i.crouch;
   p.aim = i.aim;
   p.sprint = i.sprint && !i.aim && !i.crouch;
@@ -74,10 +83,18 @@ export function movePlayer(p, i, dt, boxes, players = []) {
     ((Math.cos(i.yaw) * i.mx - Math.sin(i.yaw) * i.mz) * speed * dt) / len;
   const dz =
     ((-Math.sin(i.yaw) * i.mx - Math.cos(i.yaw) * i.mz) * speed * dt) / len;
-  const nx = clamp(p.x + dx, -24.1, 24.1),
-    nz = clamp(p.z + dz, -22.1, 22.1);
-  if (!blocked(nx, p.z, boxes, 0.36, p.y)) p.x = nx;
-  if (!blocked(p.x, nz, boxes, 0.36, p.y)) p.z = nz;
+  const height = p.crouch ? CROUCH_HEIGHT : PLAYER_HEIGHT;
+  // Substeps stop thin container walls being skipped on a slow frame.
+  const segments = Math.max(
+    1,
+    Math.ceil(Math.max(Math.abs(dx), Math.abs(dz)) / 0.18),
+  );
+  for (let step = 0; step < segments; step++) {
+    const nx = clamp(p.x + dx / segments, -24.1, 24.1),
+      nz = clamp(p.z + dz / segments, -22.1, 22.1);
+    if (!blocked(nx, p.z, boxes, 0.36, p.y, height)) p.x = nx;
+    if (!blocked(p.x, nz, boxes, 0.36, p.y, height)) p.z = nz;
+  }
   if (i.jump && !p.jumpHeld && (p.y === 0 || p.vy === 0)) p.vy = 6.8;
   p.jumpHeld = i.jump;
   p.vy -= 18 * dt;
@@ -86,17 +103,32 @@ export function movePlayer(p, i, dt, boxes, players = []) {
     next = 0;
     p.vy = 0;
   }
-  if (blocked(p.x, p.z, boxes, 0.35, next) && next < p.y) {
+  if (blocked(p.x, p.z, boxes, 0.35, next, height) && next < p.y) {
     const support = boxes
       .filter(
         (b) =>
           Math.abs(p.x - b.x) < b.w / 2 + 0.35 &&
           Math.abs(p.z - b.z) < b.d / 2 + 0.35 &&
-          b.h <= p.y + 0.1,
+          (b.y || 0) + b.h <= p.y + 0.1,
       )
-      .reduce((a, b) => Math.max(a, b.h), 0);
+      .reduce((a, b) => Math.max(a, (b.y || 0) + b.h), 0);
     next = Math.max(next, support);
     p.vy = 0;
+  }
+  if (next > p.y) {
+    for (const b of boxes) {
+      const bottom = b.y || 0;
+      if (
+        bottom > 0 &&
+        p.y + height <= bottom + 0.01 &&
+        next + height >= bottom &&
+        Math.abs(p.x - b.x) < b.w / 2 + 0.35 &&
+        Math.abs(p.z - b.z) < b.d / 2 + 0.35
+      ) {
+        next = Math.min(next, bottom - height);
+        p.vy = 0;
+      }
+    }
   }
   p.y = next;
   for (const other of players) {
@@ -231,6 +263,10 @@ export class Simulation {
     p.pitch = 0;
     p.health = 100;
     p.weapon = p.primary;
+    p.holstered = false;
+    p.weaponAction = "draw";
+    p.weaponActionAt = this.time;
+    p.inspectAt = -10;
     p.ammo = WEAPONS[p.weapon].magazine;
     p.reserve = WEAPONS[p.weapon].magazine * 5;
     p.reloading = 0;
@@ -287,18 +323,20 @@ export class Simulation {
       g.vy -= 15 * dt;
       const nextX = g.x + g.vx * dt,
         nextZ = g.z + g.vz * dt;
-      if (blocked(nextX, g.z, this.boxes, 0.12, g.y)) g.vx *= -0.45;
+      if (blocked(nextX, g.z, this.boxes, 0.12, g.y - 0.12, 0.24))
+        g.vx *= -0.45;
       else g.x = nextX;
-      if (blocked(g.x, nextZ, this.boxes, 0.12, g.y)) g.vz *= -0.45;
+      if (blocked(g.x, nextZ, this.boxes, 0.12, g.y - 0.12, 0.24))
+        g.vz *= -0.45;
       else g.z = nextZ;
       let floor = 0.12;
       for (const b of this.boxes)
         if (
           Math.abs(g.x - b.x) < b.w / 2 + 0.1 &&
           Math.abs(g.z - b.z) < b.d / 2 + 0.1 &&
-          g.y >= b.h - 0.01
+          g.y >= (b.y || 0) + b.h - 0.01
         )
-          floor = Math.max(floor, b.h + 0.12);
+          floor = Math.max(floor, (b.y || 0) + b.h + 0.12);
       g.y += g.vy * dt;
       if (g.y < floor) {
         g.y = floor;
@@ -383,12 +421,13 @@ export class Simulation {
   }
   shoot(p) {
     const w = WEAPONS[p.weapon];
-    if (p.cooldown > 0 || p.reloading > 0 || p.ammo <= 0) return;
+    if (p.holstered || p.cooldown > 0 || p.reloading > 0 || p.ammo <= 0) return;
+    p.inspectAt = -10;
     if (p.weapon !== "knife") p.ammo--;
     p.shots++;
     p.cooldown = w.rate;
-    const yaw = p.yaw,
-      pitch = p.pitch;
+    const yaw = p.shotYaw ?? p.yaw,
+      pitch = p.shotPitch ?? p.pitch;
     const origin = [p.x, eyeHeight(p), p.z];
     const dir = [
       -Math.sin(yaw) * Math.cos(pitch),
@@ -595,12 +634,32 @@ export class Simulation {
       const requested = i.slot
         ? [p.primary, "pistol", "knife"][i.slot - 1]
         : i.weapon;
+      if (i.slotSeq > (p.lastSlotSeq || 0)) {
+        p.lastSlotSeq = i.slotSeq;
+        if (requested === p.weapon) {
+          p.holstered = !p.holstered;
+          p.weaponAction = p.holstered ? "holster" : "draw";
+          p.weaponActionAt = this.time;
+          p.inspectAt = -10;
+          p.cooldown = Math.max(p.cooldown, 0.55);
+          this.event({
+            type: p.weaponAction,
+            player: p.id,
+            skin: p.skin,
+            weapon: p.weapon,
+          });
+        }
+      }
       if (
         [p.primary, "pistol", "knife"].includes(requested) &&
         requested !== p.weapon
       ) {
         this.loadouts[p.id][p.weapon] = { ammo: p.ammo, reserve: p.reserve };
         p.weapon = requested;
+        p.holstered = false;
+        p.weaponAction = "draw";
+        p.weaponActionAt = this.time;
+        p.inspectAt = -10;
         const saved = this.loadouts[p.id][requested];
         p.ammo = saved ? saved.ammo : WEAPONS[requested].magazine;
         p.reserve = saved ? saved.reserve : WEAPONS[requested].magazine * 5;
@@ -608,6 +667,13 @@ export class Simulation {
         p.cooldown = Math.max(p.cooldown, 0.6);
       }
       p.cooldown = Math.max(0, p.cooldown - dt);
+      if (i.inspectSeq > (p.lastInspectSeq || 0)) {
+        p.lastInspectSeq = i.inspectSeq;
+        if (!p.holstered && p.reloading <= 0) {
+          p.inspectAt = this.time;
+          this.event({ type: "inspect", player: p.id, weapon: p.weapon });
+        }
+      }
       if (p.reloading > 0) {
         p.reloading -= dt;
         if (p.reloading <= 0) {
@@ -620,6 +686,7 @@ export class Simulation {
       movePlayer(p, i, dt, this.boxes, this.players);
       this.throwGrenade(p, i);
       if (
+        !p.holstered &&
         (i.reload || (i.fire && p.ammo === 0)) &&
         p.ammo < WEAPONS[p.weapon].magazine &&
         p.reserve > 0 &&

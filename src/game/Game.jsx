@@ -16,6 +16,7 @@ import {
 import { Simulation } from "./simulation.js";
 import { ArenaRenderer } from "./renderer.js";
 import { GameAudio } from "./audio.js";
+import { thirdPersonAim } from "./presentation.js";
 import { CONTROLS, MAPS, WEAPONS, skinFor } from "./config.js";
 import "./game.css";
 
@@ -61,6 +62,12 @@ export default function Game({ config, profile, network, onExit, onComplete }) {
       grenadeKind: "he",
       weapon: profile.weapon,
       slot: 1,
+      slotSeq: 0,
+      inspectSeq: 0,
+      cameraMode: config.map === "arena" ? "orbit" : "first",
+      orbitYaw: 0,
+      orbitPitch: undefined,
+      orbitDrag: false,
     };
     const keys = new Set();
     let sim = null,
@@ -207,7 +214,17 @@ export default function Game({ config, profile, network, onExit, onComplete }) {
       )
         e.preventDefault();
       keys.add(e.code);
-      if (/^Digit[1-3]$/.test(e.code)) input.slot = Number(e.code.slice(-1));
+      if (!e.repeat && /^Digit[1-3]$/.test(e.code)) {
+        input.slot = Number(e.code.slice(-1));
+        input.slotSeq++;
+      }
+      if (!e.repeat && e.code === "KeyV") input.inspectSeq++;
+      if (!e.repeat && e.code === "KeyB") {
+        input.cameraMode = input.cameraMode === "first" ? "orbit" : "first";
+        input.orbitYaw = 0;
+        input.fire = false;
+        input.orbitDrag = false;
+      }
       if (!e.repeat && ["KeyG", "KeyH"].includes(e.code)) {
         input.grenadeKind = e.code === "KeyH" ? "flash" : "he";
         input.grenadeSeq++;
@@ -219,6 +236,11 @@ export default function Game({ config, profile, network, onExit, onComplete }) {
     }
     function mousemove(e) {
       if (!active || touch) return;
+      if (input.cameraMode === "orbit" && keys.has("AltLeft")) {
+        input.orbitYaw -= e.movementX * 0.006;
+        return;
+      }
+      input.orbitYaw = 0;
       input.yaw -= e.movementX * 0.0021 * profile.sensitivity;
       input.pitch = Math.max(
         -1.45,
@@ -230,11 +252,16 @@ export default function Game({ config, profile, network, onExit, onComplete }) {
     }
     function mousedown(e) {
       if (!active) return;
-      if (e.button === 0) input.fire = true;
+      if (e.button === 0) {
+        input.fire = true;
+      }
       if (e.button === 2) input.aim = true;
     }
     function mouseup(e) {
-      if (e.button === 0) input.fire = false;
+      if (e.button === 0) {
+        input.fire = false;
+        input.orbitDrag = false;
+      }
       if (e.button === 2) input.aim = false;
     }
     const context = (e) => e.preventDefault();
@@ -313,6 +340,26 @@ export default function Game({ config, profile, network, onExit, onComplete }) {
         input.sprint = keys.has("ShiftLeft") || keys.has("ShiftRight");
         input.reload = keys.has("KeyR");
       }
+      const aimingPlayer = state?.players.find((p) => p.id === id);
+      const scoped =
+        input.aim &&
+        (WEAPONS[aimingPlayer?.weapon]?.family === "sniper" ||
+          ["acog", "scope"].includes(profile.optic)) &&
+        profile.optic !== "none";
+      if (input.cameraMode === "orbit" && aimingPlayer && !scoped)
+        Object.assign(
+          input,
+          thirdPersonAim(
+            aimingPlayer,
+            input,
+            MAPS[config.map].boxes,
+            state.players,
+          ),
+        );
+      else {
+        input.shotYaw = null;
+        input.shotPitch = null;
+      }
       if (sim) {
         sim.setInput(id, input);
         if (active || network) {
@@ -369,7 +416,13 @@ export default function Game({ config, profile, network, onExit, onComplete }) {
       hudTime += dt;
       if (hudTime > 0.1) {
         hudTime = 0;
-        setHud({ ...state, me: { ...p }, fps, aim: input.aim });
+        setHud({
+          ...state,
+          me: { ...p },
+          fps,
+          aim: input.aim,
+          thirdPerson: input.cameraMode === "orbit" && !scoped,
+        });
       }
       if (state.over && !complete.current) {
         complete.current = true;
@@ -425,7 +478,10 @@ export default function Game({ config, profile, network, onExit, onComplete }) {
   const me = hud?.me,
     over = hud?.over;
   const press = (key, value) => {
-    if (control.current) control.current.input[key] = value;
+    if (control.current) {
+      control.current.input[key] = value;
+      if (key === "slot") control.current.input.slotSeq++;
+    }
   };
   const touchPoint = useRef(null);
   const leave = () => {
@@ -504,7 +560,13 @@ export default function Game({ config, profile, network, onExit, onComplete }) {
               "crosshair shape-" +
               profile.crosshair +
               (hit ? " hit" : "") +
-              (hud.aim && me.weapon !== "knife" ? " aim hidden-reticle" : "")
+              ((hud.aim &&
+                !hud.thirdPerson &&
+                me.weapon !== "knife" &&
+                profile.optic !== "none") ||
+              me.holstered
+                ? " aim hidden-reticle"
+                : "")
             }
             style={{ "--reticle": profile.crosshairColor }}
           >
@@ -513,7 +575,18 @@ export default function Game({ config, profile, network, onExit, onComplete }) {
             <i />
             <i />
           </div>
+          {hit && (
+            <div className="confirmed-hit" aria-label="Nishonga tegdi">
+              <i />
+              <i />
+              <i />
+              <i />
+            </div>
+          )}
           {hud.aim &&
+            !hud.thirdPerson &&
+            profile.optic !== "none" &&
+            !me.holstered &&
             me.weapon !== "knife" &&
             (WEAPONS[me.weapon].family === "sniper" ||
             ["acog", "scope"].includes(profile.optic) ? (
@@ -553,7 +626,9 @@ export default function Game({ config, profile, network, onExit, onComplete }) {
               </div>
             </div>
             <div className="hud-hints">
-              {touch ? "" : "WASD — YURISH   ·   R — O‘QLASH   ·   TAB — HISOB"}
+              {touch
+                ? ""
+                : "WASD — YURISH · B — KAMERA · 1 — QUROLNI OSISH · R — O‘QLASH"}
               <small>
                 {network ? (
                   <>
@@ -641,6 +716,17 @@ export default function Game({ config, profile, network, onExit, onComplete }) {
             ))}
           </div>
           <div className="touch-slots">
+            <button
+              onClick={() => {
+                if (control.current) {
+                  const i = control.current.input;
+                  i.cameraMode = i.cameraMode === "orbit" ? "first" : "orbit";
+                  i.orbitYaw = 0;
+                }
+              }}
+            >
+              Kamera
+            </button>
             {[1, 2, 3].map((slot) => (
               <button key={slot} onClick={() => press("slot", slot)}>
                 {["Qurol", "Pistol", "Pichoq"][slot - 1]}
